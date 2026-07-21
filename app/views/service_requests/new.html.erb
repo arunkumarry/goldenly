@@ -1,0 +1,18 @@
+<% content_for :title, "Request a service · Goldenly" %>
+<main class="dashboard"><%= render "shared/sidebar" %><section class="content"><div class="workflow-page">
+  <%= link_to "← Back to dashboard", root_path, class: "back-link" %>
+  <section class="workflow-card">
+    <p class="eyebrow">SERVICES</p>
+    <h1>Request support</h1>
+    <p class="workflow-intro">The request is saved for confirmation; no provider is dispatched automatically.</p>
+    <%= render "shared/errors", record: @service_request %>
+    <%= form_with model: @service_request, class: "workflow-form" do |form| %>
+      <div class="form-grid">
+        <%= form.label :service_type, "Service needed" %><%= form.select :service_type, ["Health check-up", "Home blood test", "Physiotherapy", "Household help", "Grocery & essentials", "Tech assistance"], { prompt: "Choose a service" }, required: true %>
+        <%= form.label :preferred_time, "Preferred time" %><%= form.datetime_local_field :preferred_time %>
+        <%= form.label :notes, "Helpful notes" %><%= form.text_area :notes, rows: 4, placeholder: "Access needs, preferred provider, or other details" %>
+      </div>
+      <%= form.submit "Save request for confirmation", class: "primary-button" %>
+    <% end %>
+  </section>
+</div></section></main>

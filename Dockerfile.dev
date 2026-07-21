@@ -1,0 +1,21 @@
+# syntax=docker/dockerfile:1
+
+# Development image used by docker compose. The production image remains in
+# Dockerfile and is intentionally optimized for deployment.
+ARG RUBY_VERSION=3.4.7
+FROM docker.io/library/ruby:${RUBY_VERSION}-slim
+
+WORKDIR /rails
+
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y build-essential libpq-dev postgresql-client && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY Gemfile Gemfile.lock ./
+RUN bundle install
+
+COPY . .
+
+EXPOSE 3000
+
+CMD ["bash", "./bin/docker-entrypoint-dev"]

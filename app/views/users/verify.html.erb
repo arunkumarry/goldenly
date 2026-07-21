@@ -1,0 +1,10 @@
+<% content_for :title, "Verify your account · Goldenly" %>
+<main class="auth-page"><section class="workflow-card auth-card">
+  <a class="brand" href="<%= root_path %>"><span class="brand-mark">♡</span><span>Goldenly</span></a>
+  <p class="eyebrow">VERIFY ACCOUNT</p><h1>Enter your code</h1>
+  <p class="workflow-intro">Enter the code sent to <strong><%= session.dig(:pending_signup, "identifier") %></strong>.</p>
+  <%= form_with url: verify_users_path, class: "workflow-form" do |form| %><div class="form-grid">
+    <%= form.label :code, "Verification code" %><%= form.text_field :code, inputmode: "numeric", autocomplete: "one-time-code", required: true %>
+  </div><%= form.submit "Verify and create account", class: "primary-button" %><% end %>
+  <p class="auth-switch"><%= link_to "Use a different email or phone number", new_user_path %></p>
+</section></main>

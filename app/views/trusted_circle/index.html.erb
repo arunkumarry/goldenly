@@ -1,0 +1,26 @@
+<% content_for :title, "Trusted circle · Goldenly" %>
+<main class="dashboard"><%= render "shared/sidebar" %><section class="content"><div class="workflow-page">
+  <%= link_to "← Back to dashboard", root_path, class: "back-link" %>
+  <section class="workflow-card">
+    <p class="eyebrow">TRUSTED CIRCLE</p>
+    <h1>People who can help</h1>
+    <p class="workflow-intro">Choose who receives updates and can coordinate support for <%= current_member.full_name %>.</p>
+    <%= render "shared/errors", record: @contact %>
+    <%= form_with model: @contact, url: trusted_circle_contacts_path, class: "workflow-form" do |form| %>
+      <div class="form-grid">
+        <%= form.label :name, "Name" %><%= form.text_field :name, required: true %>
+        <%= form.label :relationship %><%= form.text_field :relationship, placeholder: "Daughter, neighbour, doctor…", required: true %>
+        <%= form.label :phone_number, "Phone number" %><%= form.telephone_field :phone_number %>
+        <%= form.label :email %><%= form.email_field :email %>
+        <%= form.label :access_level, "Can receive" %><%= form.select :access_level, ["Updates", "Appointments and visits", "Emergencies", "Full care updates"], required: true %>
+      </div>
+      <%= form.submit "Add to trusted circle", class: "primary-button" %>
+    <% end %>
+    <div class="contact-list">
+      <% @contacts.each do |contact| %>
+        <article class="managed-contact"><div><strong><%= contact.name %></strong><span><%= contact.relationship %> · <%= contact.access_level %></span></div><%= button_to "Remove", trusted_circle_contact_path(contact), method: :delete, class: "text-button", form: { data: { turbo_confirm: "Remove #{contact.name} from the trusted circle?" } } %></article>
+      <% end %>
+      <% if @contacts.empty? %><p class="empty-state">No trusted contacts yet.</p><% end %>
+    </div>
+  </section>
+</div></section></main>

@@ -1,0 +1,19 @@
+<% content_for :title, "My profile · Goldenly" %>
+<main class="dashboard"><%= render "shared/sidebar" %><section class="content"><div class="workflow-page">
+  <%= link_to "← Back to dashboard", root_path, class: "back-link" %>
+  <section class="workflow-card">
+    <p class="eyebrow">MY PROFILE</p>
+    <h1>Your account details</h1>
+    <p class="workflow-intro">This profile belongs to you. Member profiles are managed separately.</p>
+    <%= render "shared/errors", record: @user %>
+    <%= form_with model: @user, url: profile_path, class: "workflow-form" do |form| %>
+      <div class="form-grid">
+        <%= form.label :full_name, "Your name" %><%= form.text_field :full_name, required: true %>
+        <%= form.label :email_address, "Email address" %><%= form.email_field :email_address, required: true %>
+        <%= form.label :country %><%= form.text_field :country, placeholder: "Country", required: true %>
+        <%= form.label :location, "City, state, or region" %><%= form.text_field :location, placeholder: "e.g. Toronto, Ontario" %>
+      </div>
+      <%= form.submit "Save account details", class: "primary-button" %>
+    <% end %>
+  </section>
+</div></section></main>

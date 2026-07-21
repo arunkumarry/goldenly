@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Goldenly",
+    "slug": "goldenly",
+    "scheme": "goldenly",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "ios": {
+      "bundleIdentifier": "com.arunxplored.goldenly"
+    },
+    "android": {
+      "package": "com.arunxplored.goldenly"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+<% content_for :title, "Add a member · Goldenly" %>
+<main class="dashboard"><%= render "shared/sidebar" %><section class="content"><div class="workflow-page">
+  <%= link_to "← Back to dashboard", root_path, class: "back-link" %>
+  <section class="workflow-card">
+    <p class="eyebrow">MEMBERS</p><h1>Add a member</h1><p class="workflow-intro">Create a separate profile for someone whose care you coordinate.</p>
+    <%= render "shared/errors", record: @member %>
+    <%= form_with model: @member, class: "workflow-form" do |form| %><div class="form-grid">
+      <%= form.label :full_name, "Member name" %><%= form.text_field :full_name, required: true %>
+      <%= form.label :relationship_to_user, "Relationship to you" %><%= form.select :relationship_to_user, [["Family member", "family"], ["Someone I support", "supported"], ["Me", "self"]], required: true %>
+      <%= form.label :phone_number, "Phone number" %><%= form.telephone_field :phone_number %>
+      <%= form.label :preferred_language, "Preferred language" %><%= form.text_field :preferred_language, required: true %>
+      <%= form.label :country %><%= form.text_field :country, placeholder: "Country", required: true %>
+      <%= form.label :location, "City, state, or region" %><%= form.text_field :location, placeholder: "e.g. Toronto, Ontario" %>
+    </div><%= form.submit "Add member", class: "primary-button" %><% end %>
+  </section>
+</div></section></main>

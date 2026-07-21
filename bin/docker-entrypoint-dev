@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# The health check normally handles this, but the loop also makes the script
+# usable when it is run directly in the web container.
+until pg_isready --dbname="$DATABASE_URL" >/dev/null 2>&1; do
+  echo "Waiting for PostgreSQL..."
+  sleep 1
+done
+
+bundle exec rails db:prepare
+bundle exec rails db:seed
+exec bundle exec rails server --binding 0.0.0.0 --port 3000

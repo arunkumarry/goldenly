@@ -1,0 +1,8 @@
+<%= form_with url: active_member_path, method: :patch, class: "member-switcher" do |form| %>
+  <%= hidden_field_tag :return_to, request.fullpath %>
+  <%= form.label :member_id, label, class: "member-switcher-label" %>
+  <div class="member-switcher-controls">
+    <%= form.select :member_id, current_user.members.order(:full_name).map { |member| [member.full_name, member.id] }, { selected: current_member.id }, aria: { label: label } %>
+    <%= form.submit "View", class: "member-switcher-button" %>
+  </div>
+<% end %>

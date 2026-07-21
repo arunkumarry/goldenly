@@ -1,0 +1,28 @@
+<% content_for :title, "Create your Goldenly account" %>
+<main class="auth-page">
+  <section class="workflow-card auth-card">
+    <a class="brand" href="<%= root_path %>"><span class="brand-mark">♡</span><span>Goldenly</span></a>
+    <p class="eyebrow">GET STARTED</p>
+    <h1>Create your account</h1>
+    <p class="workflow-intro">Set up your account and first member profile, then verify the email or phone number you use.</p>
+    <%= render "shared/errors", record: @user %><%= render "shared/errors", record: @member %>
+    <%= form_with url: users_path, class: "workflow-form" do |form| %>
+      <div class="form-grid">
+        <%= label_tag "user_full_name", "Your name" %><%= text_field_tag "user[full_name]", @user.full_name, id: "user_full_name", required: true, autocomplete: "name" %>
+        <%= label_tag :identifier, "Email address or phone number" %><%= text_field_tag :identifier, nil, id: "identifier", required: true, autocomplete: "username", placeholder: "you@example.com or +14155552671" %>
+        <%= label_tag "user_country", "Your country" %><%= text_field_tag "user[country]", @user.country, id: "user_country", required: true, autocomplete: "country-name" %>
+        <%= label_tag "user_location", "Your city, state, or region" %><%= text_field_tag "user[location]", @user.location, id: "user_location" %>
+        <hr class="form-divider">
+        <p class="form-section-title">First member</p>
+        <%= label_tag "member_full_name", "Member’s name" %><%= text_field_tag "member[full_name]", @member.full_name, id: "member_full_name", required: true %>
+        <%= label_tag "member_relationship_to_user", "This member is" %><%= select_tag "member[relationship_to_user]", options_for_select([["Me", "self"], ["A family member", "family"], ["Someone I support", "supported"]], @member.relationship_to_user), id: "member_relationship_to_user", required: true %>
+        <%= label_tag "member_phone_number", "Member phone number (optional)" %><%= telephone_field_tag "member[phone_number]", @member.phone_number, id: "member_phone_number" %>
+        <%= label_tag "member_preferred_language", "Preferred language" %><%= text_field_tag "member[preferred_language]", @member.preferred_language, id: "member_preferred_language", required: true %>
+        <%= label_tag "member_country", "Member country" %><%= text_field_tag "member[country]", @member.country, id: "member_country", required: true, autocomplete: "country-name" %>
+        <%= label_tag "member_location", "Member city, state, or region" %><%= text_field_tag "member[location]", @member.location, id: "member_location" %>
+      </div>
+      <%= form.submit "Send verification code", class: "primary-button" %>
+    <% end %>
+    <p class="auth-switch">Already have an account? <%= link_to "Sign in", new_session_path %></p>
+  </section>
+</main>

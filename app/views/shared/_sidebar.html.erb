@@ -1,0 +1,17 @@
+<aside class="sidebar" aria-label="Main navigation">
+  <a class="brand" href="<%= root_path %>"><span class="brand-mark">♡</span><span>Goldenly</span></a>
+  <p class="brand-tagline">Care. Connect. Thrive.</p>
+  <nav class="main-nav">
+    <% navigation_items.each do |label, path, icon| %>
+      <%= link_to path, class: "nav-link #{current_page?(path) ? 'active' : ''}" do %>
+        <span aria-hidden="true"><%= icon %></span><%= label %>
+      <% end %>
+    <% end %>
+  </nav>
+  <% if current_member %><%= render "shared/member_switcher", label: "Viewing member" %><% end %>
+  <div class="sidebar-footer">
+    <div class="avatar small"><%= current_user.full_name.first %></div>
+    <div><strong><%= current_user.full_name %></strong><span>My account</span></div>
+    <%= button_to "Sign out", session_path, method: :delete, class: "more-button" %>
+  </div>
+</aside>

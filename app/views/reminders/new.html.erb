@@ -1,0 +1,18 @@
+<% content_for :title, "New reminder · Goldenly" %>
+<main class="dashboard"><%= render "shared/sidebar" %><section class="content"><div class="workflow-page">
+  <%= link_to "← Back to dashboard", root_path, class: "back-link" %>
+  <section class="workflow-card">
+    <p class="eyebrow">CARE PLAN</p>
+    <h1>Add a reminder</h1>
+    <p class="workflow-intro">Create a clear, repeatable task for <%= current_member.full_name %>.</p>
+    <%= render "shared/errors", record: @reminder %>
+    <%= form_with model: @reminder, class: "workflow-form" do |form| %>
+      <div class="form-grid">
+        <%= form.label :title, "What needs to happen?" %><%= form.text_field :title, placeholder: "Take morning medicine", required: true %>
+        <%= form.label :scheduled_for, "When?" %><%= form.datetime_local_field :scheduled_for, required: true %>
+        <%= form.label :recurrence %><%= form.select :recurrence, [["Once", "once"], ["Daily", "daily"], ["Weekly", "weekly"]] %>
+      </div>
+      <%= form.submit "Add reminder", class: "primary-button" %>
+    <% end %>
+  </section>
+</div></section></main>
