@@ -9,7 +9,7 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-notifications",
+      "./plugins/without-ios-push-notifications",
       [
         "expo-speech-recognition",
         {
