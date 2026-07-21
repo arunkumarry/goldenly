@@ -1,0 +1,7 @@
+<% content_for :title, "Care profile · Goldenly" %>
+<main class="dashboard"><%= render "shared/sidebar" %><section class="content"><div class="workflow-page">
+  <%= link_to "← Back to dashboard", root_path, class: "back-link" %>
+  <section class="workflow-card"><p class="eyebrow">CARE PROFILE</p><h1><%= @care_profile.full_name %></h1><p class="workflow-intro"><%= @care_profile.state.humanize %> profile. Details are kept separate from every other person’s care.</p><%= render "shared/errors", record: @care_profile %>
+    <%= form_with model: @care_profile, class: "workflow-form" do |form| %><div class="form-grid"><%= form.label :full_name %><%= form.text_field :full_name, required: true %><%= form.label :phone_number %><%= form.telephone_field :phone_number %><%= form.label :preferred_language %><%= form.select :preferred_language, ["English", "Telugu"] %><%= form.label :country %><%= form.text_field :country, required: true %><%= form.label :location %><%= form.text_field :location %><%= form.label :mobility_needs %><%= form.text_field :mobility_needs %></div><%= form.submit "Save care profile", class: "primary-button" %><% end %>
+  </section>
+</div></section></main>

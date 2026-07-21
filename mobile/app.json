@@ -14,9 +14,12 @@
         {
           "microphonePermission": "Allow Goldenly to use the microphone for your voice request.",
           "speechRecognitionPermission": "Allow Goldenly to convert your voice request to text.",
-          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": false

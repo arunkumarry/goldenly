@@ -2,25 +2,41 @@
 <main class="dashboard"><%= render "shared/sidebar" %><section class="content"><div class="workflow-page">
   <%= link_to "← Back to dashboard", root_path, class: "back-link" %>
   <section class="workflow-card">
-    <p class="eyebrow">TRUSTED CIRCLE</p>
-    <h1>People who can help</h1>
-    <p class="workflow-intro">Choose who receives updates and can coordinate support for <%= current_member.full_name %>.</p>
-    <%= render "shared/errors", record: @contact %>
-    <%= form_with model: @contact, url: trusted_circle_contacts_path, class: "workflow-form" do |form| %>
-      <div class="form-grid">
-        <%= form.label :name, "Name" %><%= form.text_field :name, required: true %>
-        <%= form.label :relationship %><%= form.text_field :relationship, placeholder: "Daughter, neighbour, doctor…", required: true %>
-        <%= form.label :phone_number, "Phone number" %><%= form.telephone_field :phone_number %>
-        <%= form.label :email %><%= form.email_field :email %>
-        <%= form.label :access_level, "Can receive" %><%= form.select :access_level, ["Updates", "Appointments and visits", "Emergencies", "Full care updates"], required: true %>
-      </div>
-      <%= form.submit "Add to trusted circle", class: "primary-button" %>
-    <% end %>
-    <div class="contact-list">
-      <% @contacts.each do |contact| %>
-        <article class="managed-contact"><div><strong><%= contact.name %></strong><span><%= contact.relationship %> · <%= contact.access_level %></span></div><%= button_to "Remove", trusted_circle_contact_path(contact), method: :delete, class: "text-button", form: { data: { turbo_confirm: "Remove #{contact.name} from the trusted circle?" } } %></article>
+    <p class="eyebrow">PROFILE INVITATIONS</p>
+    <h1>Invite someone to their care profile</h1>
+    <p class="workflow-intro">Choose a person you coordinate, select how to deliver the invitation, and let them claim their own Goldenly profile.</p>
+
+    <% if @claimable_profiles.any? %>
+      <%= form_with model: @invitation, class: "workflow-form", data: { controller: "invitation" } do |form| %>
+        <div class="form-grid">
+          <%= form.label :care_profile_id, "Care profile" %>
+          <%= form.select :care_profile_id, options_for_select(@claimable_profiles.map { |link| [link.care_profile.full_name, link.care_profile.id, { data: { contact: link.care_profile.phone_number } }] }, @invitation.care_profile_id), {}, data: { invitation_target: "profile", action: "change->invitation#updateContact" } %>
+          <%= form.label :contact_identifier, "Phone number or email" %>
+          <%= form.text_field :contact_identifier, required: true, placeholder: "+14155552671 or person@example.com", data: { invitation_target: "contact" } %>
+          <%= form.label :delivery_channel, "Send by" %>
+          <%= form.select :delivery_channel, [["SMS", "sms"], ["Email", "email"], ["WhatsApp", "whatsapp"]] %>
+        </div>
+        <%= form.submit "Send profile invitation", class: "primary-button" %>
       <% end %>
-      <% if @contacts.empty? %><p class="empty-state">No trusted contacts yet.</p><% end %>
-    </div>
+    <% else %>
+      <p class="empty-state">Add a person with an unclaimed or assisted care profile before sending an invitation.</p>
+      <%= link_to "Add a person", new_care_profile_path, class: "primary-button" %>
+    <% end %>
+
+    <section class="contact-list">
+      <h2>People who currently have access to <%= current_care_profile.full_name %>’s care</h2>
+      <% @access_links.each do |link| %>
+        <article class="managed-contact"><div><strong><%= link.user.full_name %><%= " · Profile owner" if link.owner? %></strong><span><%= link.relationship_to_person.humanize %> · <%= link.permission_summary.presence || "No active permissions" %></span></div><% unless link.owner? %><%= button_to "Remove access", care_profile_link_path(link), method: :delete, class: "text-button", form: { data: { turbo_confirm: "Remove #{link.user.full_name}'s access?" } } %><% end %></article>
+      <% end %>
+      <% if @access_links.empty? %><p class="empty-state">No one else has access yet.</p><% end %>
+    </section>
+
+    <section class="contact-list">
+      <h2>Pending invitations for <%= current_care_profile.full_name %></h2>
+      <% @invitations.each do |invitation| %>
+        <article class="managed-contact"><div><strong><%= invitation.contact_identifier %></strong><span>Profile claim · <%= invitation.active? ? "Expires #{invitation.expires_at.to_fs(:long)}" : invitation.accepted_at ? "Accepted" : "Inactive" %></span></div><% if invitation.active? %><%= button_to "Cancel", profile_invitation_path(invitation), method: :delete, class: "text-button" %><% end %></article>
+      <% end %>
+      <% if @invitations.empty? %><p class="empty-state">No pending invitations for this care profile.</p><% end %>
+    </section>
   </section>
 </div></section></main>

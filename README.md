@@ -1,11 +1,11 @@
-# Goldenly MVP
+# Goldenly
 
 Goldenly is an AI-assisted care-coordination MVP for members: a Rails 8 Hotwire dashboard, versioned JSON API, PostgreSQL persistence layer, and an Expo companion.
 
 ## Included
 
-- Family/care dashboard: daily schedule, wellbeing, services, timeline, and trusted circle.
-- Member mobile companion: large daily tasks, help categories, voice-entry affordance, and persistent SOS action.
+- Care-profile dashboard: reminders, service requests, calendar, care activity, and trusted-circle access.
+- Mobile companion: profile switching, live reminders and service requests, voice-entry, and SOS.
 - API endpoints: `GET /api/v1/dashboard`, reminders, and service-request creation.
 - Consent-safe AI boundary: the assistant can interpret multilingual requests but cannot dispatch, notify, share data, or give clinical advice without a separate confirmation flow.
 - Central theme tokens in `app/assets/stylesheets/application.css` (the five requested colors are the top-level variables).
@@ -19,8 +19,8 @@ machine:
 docker compose up --build
 ```
 
-Open `http://localhost:3000`. The `web` container waits for PostgreSQL, creates
-or migrates the database, and loads the safe demo seed data on startup. Stop
+Open `http://localhost:3000`. The `web` container waits for PostgreSQL and creates
+or migrates the database on startup. Stop
 the stack with `docker compose down`; add `--volumes` to also remove local
 database data.
 
@@ -33,7 +33,6 @@ create the `goldenly_development` database, then run:
 
 ```sh
 bin/rails db:prepare
-bin/rails db:seed
 bin/rails server
 ```
 
@@ -49,14 +48,14 @@ npm install
 npm start
 ```
 
-The Expo app is intentionally local-first for this MVP. Add an authenticated API client after the Rails deployment URL is available.
+Set `EXPO_PUBLIC_API_URL` to the deployed Rails URL. The Expo app uses the authenticated care-profile API.
 
 This README would normally document whatever steps are necessary to get the
 application up and running.
 
-## Member voice agent
+## Care-profile voice agent
 
-Goldenly’s member-scoped agent can answer from the active member’s recorded
+Goldenly’s profile-scoped agent can answer from the active care profile’s recorded
 reminders and service requests in English or Telugu. It does not diagnose,
 prescribe, or alter treatment.
 

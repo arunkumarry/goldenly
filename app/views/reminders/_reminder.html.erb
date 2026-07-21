@@ -1,0 +1,12 @@
+<%= turbo_frame_tag dom_id(reminder) do %>
+  <article class="schedule-item <%= 'now' if index == 1 %>">
+    <time><%= reminder.scheduled_for.strftime("%-I:%M %p") %></time>
+    <span class="timeline-dot"></span>
+    <div><strong><%= reminder.title %></strong><small><%= reminder.recurrence&.humanize || "One-time reminder" %></small></div>
+    <% if reminder.status == "completed" %>
+      <span class="status-pill success">Completed</span>
+    <% else %>
+      <%= button_to "Mark done", reminder_path(reminder), method: :patch, params: { reminder: { status: "completed" } }, class: "status-action" %>
+    <% end %>
+  </article>
+<% end %>

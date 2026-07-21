@@ -4,7 +4,7 @@
   <section class="workflow-card">
     <p class="eyebrow">MY PROFILE</p>
     <h1>Your account details</h1>
-    <p class="workflow-intro">This profile belongs to you. Member profiles are managed separately.</p>
+    <p class="workflow-intro">This is your account profile. Care profiles are managed separately and keep each person’s data private.</p>
     <%= render "shared/errors", record: @user %>
     <%= form_with model: @user, url: profile_path, class: "workflow-form" do |form| %>
       <div class="form-grid">

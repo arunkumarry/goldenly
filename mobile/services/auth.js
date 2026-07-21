@@ -18,10 +18,19 @@ export const requestCode = (identifier) => request("/api/v1/auth/request-code", 
 export const signIn = (identifier, code) => request("/api/v1/auth/sign-in", { identifier, code });
 export const signUp = (payload) => request("/api/v1/auth/sign-up", payload);
 
-export async function saveSession(user, tokens) {
+export async function saveSession(user, tokens, careContext = {}) {
   await SecureStore.setItemAsync("goldenly_access_token", tokens.access_token);
   await SecureStore.setItemAsync("goldenly_refresh_token", tokens.refresh_token);
-  await SecureStore.setItemAsync("goldenly_user", JSON.stringify(user));
+  await SecureStore.setItemAsync("goldenly_user", JSON.stringify({ ...user, ...careContext }));
+}
+
+export async function setActiveCareProfile(careProfileId) {
+  const user = await getSession();
+  if (!user) return null;
+
+  const updatedUser = { ...user, active_care_profile_id: careProfileId };
+  await SecureStore.setItemAsync("goldenly_user", JSON.stringify(updatedUser));
+  return updatedUser;
 }
 
 export async function refreshSession() {

@@ -1,0 +1,20 @@
+<% content_for :title, "Add a person · Goldenly" %>
+<main class="dashboard"><%= render "shared/sidebar" %><section class="content"><div class="workflow-page">
+  <%= link_to "← Back to dashboard", root_path, class: "back-link" %>
+  <section class="workflow-card" data-controller="onboarding">
+    <p class="eyebrow">CARE PROFILES</p><h1>Who is Goldenly for?</h1><p class="workflow-intro">Every person has a separate, private care profile. You can manage another person’s profile only with their consent or an appropriate recorded basis.</p>
+    <%= render "shared/errors", record: @care_profile %>
+    <%= form_with model: @care_profile, class: "workflow-form" do |form| %>
+      <fieldset class="setup-choice"><legend>Set up care</legend><label><%= radio_button_tag :setup_for, "self", false, data: { action: "change->onboarding#toggle" } %> I am setting up care for myself</label><label><%= radio_button_tag :setup_for, "someone_else", true, data: { action: "change->onboarding#toggle" } %> I am setting up care for someone else</label></fieldset>
+      <div class="form-grid">
+        <%= form.label :full_name, "Person’s name" %><%= form.text_field :full_name, required: true %>
+        <%= form.label :phone_number, "Phone number (for a future profile claim)" %><%= form.telephone_field :phone_number %>
+        <%= form.label :preferred_language, "Preferred language" %><%= form.select :preferred_language, ["English", "Telugu"], required: true %>
+        <%= form.label :country %><%= form.text_field :country, required: true %>
+        <%= form.label :location, "City, state, or region" %><%= form.text_field :location %>
+      </div>
+      <div data-onboarding-target="coordinatorFields" class="form-grid"><%= label_tag :relationship_to_person, "Relationship to this person" %><%= select_tag :relationship_to_person, options_for_select([["Family member", "family"], ["Spouse or partner", "spouse"], ["Friend or neighbour", "friend"], ["Professional coordinator", "coordinator"]]) %><%= label_tag :consent_basis, "Consent or basis for coordinating care" %><%= text_field_tag :consent_basis, nil, placeholder: "For example: person asked me to set up their care" %><%= form.label :state, "Current profile status" %><%= form.select :state, [["Awaiting their profile claim", "unclaimed"], ["They prefer assisted care", "assisted"]] %></div>
+      <%= form.submit "Create care profile", class: "primary-button" %>
+    <% end %>
+  </section>
+</div></section></main>

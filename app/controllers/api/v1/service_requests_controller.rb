@@ -1,24 +1,38 @@
 class Api::V1::ServiceRequestsController < ActionController::API
+  include MobileCareProfileAuthentication
+
   def index
-    render json: { service_requests: member.service_requests.order(created_at: :desc).map { |request| service_request_payload(request) } }
+    return unless authorize_mobile_care_profile!(:service_requests, :view)
+
+    render json: { service_requests: current_mobile_care_profile.service_requests.order(created_at: :desc).map { |request| service_request_payload(request) } }
   end
 
   def create
-    request = member.service_requests.create!(service_request_params)
-    render json: { service_request: service_request_payload(request), message: "Please confirm before we dispatch a provider." }, status: :created
+    return unless authorize_mobile_care_profile!(:service_requests, :manage)
+
+    attributes = service_request_params.to_h.symbolize_keys
+    service_catalog = ServiceCatalog.available.find(attributes.delete(:service_catalog_id))
+    request = current_mobile_care_profile.service_requests.create!(
+      attributes.merge(
+        service_catalog: service_catalog,
+        status: :requested,
+        confirmed_at: Time.current
+      )
+    )
+    render json: { service_request: service_request_payload(request), message: "Your service request is confirmed. Provider matching is the next phase." }, status: :created
   end
 
   private
 
-  def member
-    Member.first || Member.create!(full_name: "New member", preferred_language: "English")
-  end
-
   def service_request_params
-    params.permit(:service_type, :notes, :preferred_time)
+    params.permit(:service_catalog_id, :notes, :preferred_time)
   end
 
   def service_request_payload(request)
-    request.slice(:id, :service_type, :status, :preferred_time, :notes, :assigned_provider_name, :confirmed_at)
+    request.slice(:id, :service_type, :status, :preferred_time, :notes, :assigned_provider_name, :confirmed_at).merge(
+      service_catalog_id: request.service_catalog_id,
+      service_kind: request.service_catalog.kind,
+      service_name: request.service_catalog.name
+    )
   end
 end

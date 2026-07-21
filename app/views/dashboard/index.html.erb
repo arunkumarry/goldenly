@@ -2,124 +2,77 @@
 
 <main class="dashboard">
   <%= render "shared/sidebar" %>
-
   <section class="content">
     <header class="topbar">
       <div>
-        <p class="eyebrow">HOME DASHBOARD</p>
-        <h1><%= @care[:member][:greeting] %>, <%= @member.full_name.split.first %> <span aria-hidden="true">☀</span></h1>
+        <p class="eyebrow">CARE DASHBOARD</p>
+        <h1>Hello, <%= current_user.full_name.split.first %> <span aria-hidden="true">☀</span></h1>
+        <p class="active-profile-banner"><%= coordinator_mode? ? "Viewing #{@care_profile.full_name}’s care. Your actions apply only to this profile." : "Viewing your care." %></p>
       </div>
-      <div class="top-actions"><button class="help-link">Need help?</button><button class="notification" aria-label="Notifications">◌<i></i></button><div class="avatar">M</div></div>
+      <div class="top-actions"><%= link_to "View calendar", calendar_path, class: "outline-button" %><div class="avatar"><%= current_user.full_name.first %></div></div>
     </header>
 
     <section class="hero-card">
       <div class="hero-copy">
         <span class="hero-kicker">Your care, at a glance</span>
-        <h2>Everything is on track today.</h2>
-        <p>Your care team is ready, and you have one upcoming visit.</p>
-        <a class="text-link" href="#today">View today’s plan <span>→</span></a>
+        <h2><%= @today_reminders.any? ? "Your plan is ready for today." : "Start building your care plan." %></h2>
+        <p><%= @today_reminders.any? ? "#{@today_reminders.count} reminder#{'s' if @today_reminders.count != 1} scheduled today." : "Add a reminder, request a service, or ask Goldenly for help." %></p>
+        <%= link_to "Open calendar →", calendar_path, class: "text-link" %>
       </div>
       <div class="hero-art" aria-hidden="true"><div class="sun"></div><div class="plant"><i></i><i></i><i></i></div><div class="care-figure">♡</div></div>
     </section>
 
     <section class="summary-grid" aria-label="Care overview">
-      <article class="summary-card visit"><span class="card-icon">◷</span><div><p>Next visit</p><strong><%= @care[:next_visit][:title] %></strong><small><%= @care[:next_visit][:time] %></small></div><span class="status-pill blue"><%= @care[:next_visit][:eta] %></span></article>
-      <article class="summary-card"><span class="card-icon green">♡</span><div><p>Wellbeing</p><strong><%= @care[:member][:wellbeing] %></strong><small><%= @care[:member][:wellbeing_note] %></small></div><span class="trend">↗</span></article>
-      <article class="summary-card"><span class="card-icon sky">▣</span><div><p>Active requests</p><strong>1 in progress</strong><small>Physiotherapy visit</small></div><span class="trend">→</span></article>
-      <article class="summary-card"><span class="card-icon amber">⌁</span><div><p>Care plan</p><strong>4 tasks today</strong><small>One more than usual</small></div><span class="trend">→</span></article>
+      <article class="summary-card"><span class="card-icon amber">⌁</span><div><p>Today’s reminders</p><strong><%= @today_reminders.count %></strong><small><%= @today_reminders.where(status: "completed").count %> completed</small></div></article>
+      <article class="summary-card"><span class="card-icon sky">▣</span><div><p>Active requests</p><strong><%= @service_requests.reject(&:completed?).count %></strong><small>Profile-specific support requests</small></div></article>
+      <article class="summary-card"><span class="card-icon green">♧</span><div><p>People with access</p><strong><%= @circle_links.count %></strong><small>Trusted-circle connections</small></div></article>
+      <article class="summary-card"><span class="card-icon">▦</span><div><p>Upcoming reminders</p><strong><%= @reminders.count %></strong><small><%= link_to "View calendar", calendar_path %></small></div></article>
     </section>
 
     <div class="dashboard-columns">
       <section class="panel schedule-panel" id="today">
-        <div class="panel-heading"><div><p class="eyebrow">TODAY’S SCHEDULE</p><h2>Monday, 20 July</h2></div><a href="#care-plan">View care plan →</a></div>
+        <div class="panel-heading"><div><p class="eyebrow">SCHEDULE</p><h2>Upcoming reminders</h2></div><%= link_to "Calendar →", calendar_path %></div>
         <div class="schedule-list">
-          <% @reminders.each_with_index do |reminder, index| %>
-            <article class="schedule-item <%= 'now' if index == 1 %>">
-              <time><%= reminder.scheduled_for.strftime("%-I:%M %p") %></time>
-              <span class="timeline-dot"></span>
-              <div><strong><%= reminder.title %></strong><small><%= reminder.recurrence&.humanize || "One-time reminder" %></small></div>
-              <% if reminder.status == "completed" %>
-                <span class="status-pill success">Completed</span>
-              <% else %>
-                <%= button_to "Mark done", reminder_path(reminder), method: :patch, params: { reminder: { status: "completed" } }, class: "status-action" %>
-              <% end %>
-            </article>
-          <% end %>
-          <% if @reminders.empty? %><p class="empty-state">No reminders yet. Add the first task to the care plan.</p><% end %>
+          <% @reminders.each_with_index do |reminder, index| %><%= render "reminders/reminder", reminder: reminder, index: index %><% end %>
+          <% if @reminders.empty? %><p class="empty-state">No reminders yet. <%= link_to "Create the first reminder", new_reminder_path %>.</p><% end %>
         </div>
       </section>
 
       <aside class="quick-panel">
         <section class="panel quick-actions">
           <div class="panel-heading"><div><p class="eyebrow">QUICK ACTIONS</p><h2>What do you need?</h2></div></div>
-          <a href="<%= new_service_request_path %>">✦ <span>Request a service</span><b>→</b></a>
+          <%= link_to new_service_request_path do %>✦ <span>Request a service</span><b>→</b><% end %>
           <button type="button" data-agent-open>◉ <span>Talk to Goldenly</span><b>→</b></button>
-          <a href="<%= edit_member_path %>">▤ <span>Edit member profile</span><b>→</b></a>
-          <button class="sos-button">✚ <span>SOS · Emergency help</span><b>→</b></button>
+          <%= link_to edit_care_profile_path(@care_profile) do %>▤ <span>Edit care profile</span><b>→</b><% end %>
         </section>
         <section class="assistant-card" id="assistant" data-care-agent data-message-url="<%= assistant_messages_path %>" data-confirm-url="<%= confirm_assistant_action_path %>">
           <div class="assistant-orb">✦</div><div><p>Goldenly AI</p><strong>“How can I help today?”</strong></div>
           <button type="button" class="outline-button" data-agent-open>Talk now</button>
-
           <dialog class="agent-dialog" aria-label="Talk to Goldenly">
             <div class="agent-dialog-header"><div><p class="eyebrow">GOLDENLY VOICE ASSISTANT</p><h2>How can I help?</h2></div><button type="button" class="dialog-close" data-agent-close aria-label="Close">×</button></div>
-            <p class="agent-intro">Ask about this member’s recorded care plan, reminders, services, or urgent help. English and Telugu are supported.</p>
-            <label class="agent-label" for="agent-language">Language</label>
-            <select id="agent-language" data-agent-language><option>English</option><option>Telugu</option></select>
-            <label class="agent-label" for="agent-message">What do you need?</label>
-            <textarea id="agent-message" data-agent-input placeholder="For example: When is my physiotherapy? / నా మందు ఎప్పుడు తీసుకోవాలి?"></textarea>
+            <p class="agent-intro">Ask about this person’s recorded care plan, reminders, services, or urgent help. English and Telugu are supported.</p>
+            <label class="agent-label" for="agent-language">Language</label><select id="agent-language" data-agent-language><option>English</option><option>Telugu</option></select>
+            <label class="agent-label" for="agent-message">What do you need?</label><textarea id="agent-message" data-agent-input placeholder="For example: when is my next reminder?"></textarea>
             <div class="agent-actions"><button type="button" class="agent-secondary" data-agent-microphone>Speak</button><button type="button" class="agent-primary" data-agent-submit>Ask Goldenly</button></div>
             <p class="agent-reply" data-agent-reply hidden aria-live="polite"></p>
-            <section class="agent-proposal" data-agent-proposal hidden aria-live="polite">
-              <strong data-proposal-title></strong><p data-proposal-summary></p><p data-proposal-confirmation></p>
-              <label class="agent-location"><input type="checkbox" data-agent-share-location> Include my saved location with an emergency alert</label>
-              <button type="button" class="agent-primary" data-agent-confirm>Confirm action</button>
-            </section>
+            <section class="agent-proposal" data-agent-proposal hidden aria-live="polite"><strong data-proposal-title></strong><p data-proposal-summary></p><p data-proposal-confirmation></p><label class="agent-location"><input type="checkbox" data-agent-share-location> Include my saved location with an emergency alert</label><button type="button" class="agent-primary" data-agent-confirm>Confirm action</button></section>
             <p class="agent-safety">Goldenly does not diagnose, prescribe, or change medication. For immediate danger, call local emergency services.</p>
           </dialog>
-        </section>
-        <section class="panel request-panel">
-          <div class="panel-heading"><div><p class="eyebrow">SERVICE REQUESTS</p><h2>Confirm before dispatch</h2></div></div>
-          <% @service_requests.each do |service_request| %>
-            <article class="request-item">
-              <div><strong><%= service_request.service_type %></strong><small><%= service_request.preferred_time ? service_request.preferred_time.strftime("%-d %b, %-I:%M %p") : "Time to be arranged" %></small></div>
-              <% if service_request.awaiting_confirmation? %>
-                <%= button_to "Confirm", service_request_path(service_request), method: :patch, params: { service_request: { status: "requested" } }, class: "status-action" %>
-              <% else %>
-                <span class="status-pill success"><%= service_request.status.humanize %></span>
-              <% end %>
-            </article>
-          <% end %>
-          <% if @service_requests.empty? %><p class="empty-state">No service requests yet.</p><% end %>
         </section>
       </aside>
     </div>
 
-    <section class="section-block" id="services">
-      <div class="section-heading"><div><p class="eyebrow">SERVICES</p><h2>Support that comes to you</h2></div><%= link_to "Explore all services →", services_path %></div>
-      <div class="service-grid">
-        <% @care[:services].each do |service| %>
-          <article class="service-card"><span class="service-icon <%= service[:tone] %>"><%= service[:icon] %></span><h3><%= service[:name] %></h3><p><%= service[:detail] %></p><%= link_to "Request →", new_service_request_path(service_type: service[:name]), class: "service-action" %></article>
-        <% end %>
-      </div>
-    </section>
-
     <div class="lower-grid">
-      <section class="panel timeline-panel" id="care-plan">
-        <div class="panel-heading"><div><p class="eyebrow">CARE TIMELINE</p><h2>Recent updates</h2></div><%= link_to "View all →", care_timeline_path %></div>
-        <% @care[:timeline].each do |event| %>
-          <article class="event"><span class="event-icon">⌁</span><div><small><%= event[:time] %></small><strong><%= event[:title] %></strong><p><%= event[:detail] %></p></div><span class="event-type"><%= event[:type] %></span></article>
-        <% end %>
+      <section class="panel timeline-panel">
+        <div class="panel-heading"><div><p class="eyebrow">CARE ACTIVITY</p><h2>Recent updates</h2></div></div>
+        <% @audit_events.each do |event| %><article class="event"><span class="event-icon">⌁</span><div><small><%= event.occurred_at.to_fs(:short) %></small><strong><%= event.action.humanize %></strong></div></article><% end %>
+        <% if @audit_events.empty? %><p class="empty-state">Activity will appear here as care is coordinated.</p><% end %>
       </section>
-      <section class="panel circle-panel" id="circle">
-        <div class="panel-heading"><div><p class="eyebrow">TRUSTED CIRCLE</p><h2>People who care</h2></div><%= link_to "Manage →", trusted_circle_path %></div>
-        <% @contacts.each do |contact| %>
-          <article class="contact"><div class="avatar small"><%= contact.name.first %></div><div><strong><%= contact.name %> <small>· <%= contact.relationship %></small></strong><p><%= contact.access_level %></p></div><a href="tel:<%= contact.phone_number %>" aria-label="Call <%= contact.name %>">⌕</a></article>
-        <% end %>
-        <% if @contacts.empty? %><p class="empty-state">Add people to the trusted circle.</p><% end %>
+      <section class="panel circle-panel">
+        <div class="panel-heading"><div><p class="eyebrow">TRUSTED CIRCLE</p><h2>People with access</h2></div><%= link_to "Manage →", trusted_circle_path %></div>
+        <% @circle_links.each do |link| %><article class="contact"><div class="avatar small"><%= link.user.full_name.first %></div><div><strong><%= link.user.full_name %></strong><p><%= link.relationship_to_person.humanize %></p></div></article><% end %>
+        <% if @circle_links.empty? %><p class="empty-state"><%= link_to "Invite someone to the trusted circle", trusted_circle_path %>.</p><% end %>
       </section>
     </div>
-
-    <footer class="safety-note">Goldenly helps coordinate care and routines. It does not provide medical diagnosis or treatment advice. <a href="#">Learn about safety</a></footer>
   </section>
 </main>

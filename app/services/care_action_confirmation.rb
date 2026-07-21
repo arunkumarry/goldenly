@@ -1,8 +1,8 @@
 class CareActionConfirmation
   PURPOSE = "care-agent-action".freeze
 
-  def self.issue(member:, action:)
-    verifier.generate({ "member_id" => member.id, "action" => action }, expires_in: 10.minutes)
+  def self.issue(care_profile:, action:)
+    verifier.generate({ "care_profile_id" => care_profile.id, "action" => action }, expires_in: 10.minutes)
   end
 
   def self.verify(token)

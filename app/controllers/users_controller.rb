@@ -1,9 +1,10 @@
 class UsersController < ApplicationController
-  skip_before_action :require_authentication, only: %i[new create]
+  # Signup verification happens before an Account User session exists.
+  skip_before_action :require_authentication, only: %i[new create verify confirm]
 
   def new
     @user = User.new
-    @member = Member.new(relationship_to_user: "self", preferred_language: "English")
+    @care_profile = CareProfile.new(preferred_language: "English")
   end
 
   def create
@@ -15,9 +16,9 @@ class UsersController < ApplicationController
 
     @user = User.new(user_params)
     AuthenticationIdentifier.assign(@user, identifier)
-    @member = @user.members.build(member_params)
-    if @user.valid? && @member.valid?
-      session[:pending_signup] = { "identifier" => identifier, "user" => user_params.to_h, "member" => member_params.to_h }
+    @care_profile = CareProfile.new(care_profile_params)
+    if @user.valid? && @care_profile.valid?
+      session[:pending_signup] = { "identifier" => identifier, "user" => user_params.to_h, "care_profile" => care_profile_params.to_h, "setup_for" => params[:setup_for], "relationship_to_person" => params[:relationship_to_person], "consent_basis" => params[:consent_basis] }
       OneTimeVerification.send_code(identifier)
       redirect_to verify_users_path, notice: "We sent a verification code to #{identifier}."
     else
@@ -25,7 +26,7 @@ class UsersController < ApplicationController
     end
   rescue AuthenticationIdentifier::InvalidIdentifier, EmailOtp::DeliveryError, TwilioVerify::ConfigurationError, Twilio::REST::RestError => error
     @user ||= User.new(user_params)
-    @member ||= @user.members.build(member_params)
+    @care_profile ||= CareProfile.new(care_profile_params)
     flash.now[:alert] = error.message
     render :new, status: :unprocessable_content
   end
@@ -39,7 +40,8 @@ class UsersController < ApplicationController
     return redirect_to new_user_path, alert: "Start signup again." unless signup
 
     unless OneTimeVerification.approved?(signup.fetch("identifier"), params[:code])
-      flash.now[:alert] = "That verification code is invalid or has expired."
+      OneTimeVerification.send_code(signup.fetch("identifier"))
+      flash.now[:alert] = "That verification code is invalid or has expired. We sent you a new code."
       return render :verify, status: :unprocessable_content
     end
 
@@ -48,10 +50,16 @@ class UsersController < ApplicationController
       AuthenticationIdentifier.assign(@user, signup.fetch("identifier"))
       @user.verified_at = Time.current
       @user.save!
-      @member = @user.members.create!(signup.fetch("member"))
+      onboarding = CareProfileOnboarding.new(account_user: @user)
+      @care_profile = if signup["setup_for"] == "someone_else"
+        onboarding.create_for_someone_else!(signup.fetch("care_profile"), relationship: signup["relationship_to_person"].presence || "family", consent_basis: signup["consent_basis"].presence || "coordinator confirmed initial setup")
+      else
+        onboarding.create_self!(signup.fetch("care_profile"))
+      end
     end
     session.delete(:pending_signup)
     session[:user_id] = @user.id
+    session[:care_profile_id] = @care_profile.id
     redirect_to root_path, notice: "Welcome to Goldenly, #{@user.full_name}!"
   rescue ActiveRecord::RecordInvalid, EmailOtp::DeliveryError, TwilioVerify::ConfigurationError, Twilio::REST::RestError => error
     flash.now[:alert] = error.message
@@ -64,8 +72,8 @@ class UsersController < ApplicationController
     params.require(:user).permit(:full_name, :country, :location)
   end
 
-  def member_params
-    params.require(:member).permit(:full_name, :phone_number, :preferred_language, :relationship_to_user, :country, :location)
+  def care_profile_params
+    params.require(:care_profile).permit(:full_name, :phone_number, :preferred_language, :country, :location)
   end
 
   def pending_signup

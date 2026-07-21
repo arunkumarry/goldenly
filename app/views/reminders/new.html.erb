@@ -4,7 +4,7 @@
   <section class="workflow-card">
     <p class="eyebrow">CARE PLAN</p>
     <h1>Add a reminder</h1>
-    <p class="workflow-intro">Create a clear, repeatable task for <%= current_member.full_name %>.</p>
+    <p class="workflow-intro">Create a clear, repeatable task for <%= current_care_profile.full_name %>.</p>
     <%= render "shared/errors", record: @reminder %>
     <%= form_with model: @reminder, class: "workflow-form" do |form| %>
       <div class="form-grid">

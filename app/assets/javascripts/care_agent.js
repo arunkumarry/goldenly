@@ -36,7 +36,7 @@ const careAgent = () => {
       const message = input.value.trim();
       if (!message) return show(reply, "Please tell Goldenly what you need.");
       submit.disabled = true;
-      show(reply, "Goldenly is checking the member’s care record…");
+      show(reply, "Goldenly is checking this care profile’s record…");
       proposal.hidden = true;
       try {
         const payload = await request(agent.dataset.messageUrl, { message, language: language.value });

@@ -1,0 +1,17 @@
+<% content_for :title, "Calendar · Goldenly" %>
+<main class="dashboard">
+  <%= render "shared/sidebar" %>
+  <section class="content"><div class="workflow-page calendar-page">
+    <header class="calendar-header"><div><p class="eyebrow">CARE CALENDAR</p><h1><%= @calendar_month.strftime("%B %Y") %></h1><p class="workflow-intro">Reminders and scheduled service requests for <%= @care_profile.full_name %>.</p></div><div class="calendar-navigation"><%= link_to "← Previous", calendar_path(month: @calendar_month.prev_month.strftime("%Y-%m")), class: "outline-button" %><%= link_to "Today", calendar_path, class: "outline-button" %><%= link_to "Next →", calendar_path(month: @calendar_month.next_month.strftime("%Y-%m")), class: "outline-button" %></div></header>
+    <section class="calendar-grid" aria-label="<%= @calendar_month.strftime("%B %Y") %>">
+      <% Date::DAYNAMES.each { |day| %><div class="calendar-weekday"><%= day.first(3) %></div><% } %>
+      <% (@calendar_month.beginning_of_month.beginning_of_week..@calendar_month.end_of_month.end_of_week).each do |day| %>
+        <article class="calendar-day <%= "outside-month" unless day.month == @calendar_month.month %> <%= "today" if day == Time.zone.today %>"><time><%= day.day %></time>
+          <% @calendar_events.fetch(day, []).each do |reminder| %><span class="calendar-event reminder-event" title="<%= reminder.scheduled_for.strftime("%-I:%M %p") %>"><%= reminder.title %></span><% end %>
+          <% @service_events.fetch(day, []).each do |service_request| %><span class="calendar-event service-event"><%= service_request.service_type %></span><% end %>
+        </article>
+      <% end %>
+    </section>
+    <p class="calendar-key"><span class="calendar-event reminder-event">Reminder</span><span class="calendar-event service-event">Service request</span></p>
+  </div></section>
+</main>

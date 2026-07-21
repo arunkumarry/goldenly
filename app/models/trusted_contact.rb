@@ -1,5 +1,5 @@
 class TrustedContact < ApplicationRecord
-  belongs_to :member
+  include BelongsToCareProfile
 
   validates :name, :relationship, :access_level, presence: true
 end

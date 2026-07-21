@@ -1,8 +1,10 @@
-<%= form_with url: active_member_path, method: :patch, class: "member-switcher" do |form| %>
+<%= turbo_frame_tag "active_care_profile" do %>
+<%= form_with url: active_care_profile_path, method: :patch, class: "member-switcher", data: { controller: "profile-switcher", action: "change->profile-switcher#submit", turbo_frame: "_top" } do |form| %>
   <%= hidden_field_tag :return_to, request.fullpath %>
-  <%= form.label :member_id, label, class: "member-switcher-label" %>
+  <%= form.label :care_profile_id, label, class: "member-switcher-label" %>
   <div class="member-switcher-controls">
-    <%= form.select :member_id, current_user.members.order(:full_name).map { |member| [member.full_name, member.id] }, { selected: current_member.id }, aria: { label: label } %>
+    <%= form.select :care_profile_id, current_user.active_care_profile_links.sort_by { |link| link.care_profile.full_name }.map { |link| [link.care_profile.owned_by?(current_user) ? "My care · #{link.care_profile.full_name}" : "#{link.care_profile.full_name} · #{link.relationship_to_person.humanize}", link.care_profile.id] }, { selected: current_care_profile.id }, aria: { label: label } %>
     <%= form.submit "View", class: "member-switcher-button" %>
   </div>
+<% end %>
 <% end %>

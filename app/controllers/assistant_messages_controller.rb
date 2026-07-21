@@ -1,11 +1,13 @@
 class AssistantMessagesController < ApplicationController
+  before_action -> { require_care_profile_permission!(:appointments_routines, :view) }, only: :create
+
   def create
     message = params.require(:message).to_s
-    action = CareActionPlanner.new(member: current_member, message: message).plan
-    session[:pending_care_action] = action&.merge("member_id" => current_member.id)
+    action = CareActionPlanner.new(care_profile: current_care_profile, message: message).plan
+    session[:pending_care_action] = action&.merge("care_profile_id" => current_care_profile.id)
 
     render json: {
-      reply: GoldenlyAssistant.new(message, member: current_member).reply,
+      reply: GoldenlyAssistant.new(message, care_profile: current_care_profile).reply,
       proposal: action,
       safety_note: "Goldenly provides coordination support, not medical advice. It cannot diagnose or change treatment."
     }
@@ -13,8 +15,15 @@ class AssistantMessagesController < ApplicationController
 
   def confirm
     action = session.delete(:pending_care_action)
-    return render json: { error: "There is no pending care action to confirm." }, status: :unprocessable_content unless action && action["member_id"] == current_member.id
+    return render json: { error: "There is no pending care action to confirm." }, status: :unprocessable_content unless action && action["care_profile_id"] == current_care_profile.id
 
-    render json: CareActionExecutor.new(member: current_member, action: action, share_location: params[:share_location]).confirm
+    permission = case action["type"]
+    when "service_request" then :service_requests
+    when "emergency_alert" then :emergency_alerts
+    else :appointments_routines
+    end
+    require_care_profile_permission!(permission, :manage, emergency: action["type"] == "emergency_alert")
+
+    render json: CareActionExecutor.new(care_profile: current_care_profile, action: action, share_location: params[:share_location], actor: current_user).confirm
   end
 end

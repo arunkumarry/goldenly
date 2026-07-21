@@ -1,0 +1,10 @@
+<% content_for :title, "Claim your Goldenly profile" %>
+<main class="auth-page"><section class="workflow-card auth-card"><a class="brand" href="<%= root_path %>"><%= image_tag "goldenly-logo.png", class: "brand-logo", alt: "" %><span>Goldenly</span></a>
+  <p class="eyebrow">PROFILE INVITATION</p><h1><%= @invitation.claim? ? "Claim your Goldenly profile" : "Join a trusted circle" %></h1><p class="workflow-intro">This invitation gives you access to <strong><%= @care_profile.full_name %>’s care profile</strong>. Verify the phone number or email that received it to continue.</p>
+  <% if session[:pending_profile_claim] %>
+    <%= form_with url: claim_profile_path(@token), class: "workflow-form" do |form| %><div class="form-grid"><%= form.label :code, "Verification code" %><%= form.text_field :code, required: true, autocomplete: "one-time-code" %></div><% if @invitation.claim? %><label class="consent-check"><%= check_box_tag :retain_existing_access, "1", true %> Keep the existing coordinators listed below. You can change their permissions later.</label><% end %><%= form.submit "Verify and continue", class: "primary-button" %><% end %>
+  <% else %>
+    <%= form_with url: claim_profile_request_code_path(@token), class: "workflow-form" do |form| %><div class="form-grid"><%= form.label :identifier, "Phone number or email from the invitation" %><%= form.text_field :identifier, required: true, autocomplete: "username" %></div><%= form.submit "Send verification code", class: "primary-button" %><% end %>
+  <% end %>
+  <% if @invitation.claim? %><section class="access-review"><h2>Current access</h2><p>Review these people before you claim the profile.</p><% @access_links.each do |link| %><p><strong><%= link.user.full_name %></strong> · <%= link.relationship_to_person.humanize %></p><% end %></section><% end %>
+</section></main>
