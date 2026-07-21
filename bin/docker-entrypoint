@@ -1,8 +1,5 @@
 #!/bin/bash -e
 
-# If running the rails server then create or migrate existing database
-if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
-  ./bin/rails db:prepare
-fi
-
+# Database setup runs in the dedicated deployment migration job. Cloud Run may
+# start more than one web instance, so a web process must never run migrations.
 exec "${@}"

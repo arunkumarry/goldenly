@@ -85,20 +85,13 @@ test:
 # for a full overview on how database connection configuration can be specified.
 #
 production:
-  primary: &primary_production
+  primary:
     <<: *default
-    database: goldenly_production
-    username: goldenly
-    password: <%= ENV["GOLDENLY_DATABASE_PASSWORD"] %>
-  cache:
-    <<: *primary_production
-    database: goldenly_production_cache
-    migrations_paths: db/cache_migrate
+    # Cloud Run receives this complete connection URL from Secret Manager.
+    url: <%= ENV["DATABASE_URL"] %>
   queue:
-    <<: *primary_production
-    database: goldenly_production_queue
+    <<: *default
+    # Solid Queue has its own database so queued notifications survive web
+    # service restarts and deployments.
+    url: <%= ENV["QUEUE_DATABASE_URL"] %>
     migrations_paths: db/queue_migrate
-  cable:
-    <<: *primary_production
-    database: goldenly_production_cable
-    migrations_paths: db/cable_migrate
