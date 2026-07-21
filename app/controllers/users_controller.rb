@@ -18,12 +18,12 @@ class UsersController < ApplicationController
     @member = @user.members.build(member_params)
     if @user.valid? && @member.valid?
       session[:pending_signup] = { "identifier" => identifier, "user" => user_params.to_h, "member" => member_params.to_h }
-      TwilioVerify.send_code(identifier)
+      OneTimeVerification.send_code(identifier)
       redirect_to verify_users_path, notice: "We sent a verification code to #{identifier}."
     else
       render :new, status: :unprocessable_content
     end
-  rescue AuthenticationIdentifier::InvalidIdentifier, TwilioVerify::ConfigurationError, Twilio::REST::RestError => error
+  rescue AuthenticationIdentifier::InvalidIdentifier, EmailOtp::DeliveryError, TwilioVerify::ConfigurationError, Twilio::REST::RestError => error
     @user ||= User.new(user_params)
     @member ||= @user.members.build(member_params)
     flash.now[:alert] = error.message
@@ -38,7 +38,7 @@ class UsersController < ApplicationController
     signup = pending_signup
     return redirect_to new_user_path, alert: "Start signup again." unless signup
 
-    unless TwilioVerify.approved?(signup.fetch("identifier"), params[:code])
+    unless OneTimeVerification.approved?(signup.fetch("identifier"), params[:code])
       flash.now[:alert] = "That verification code is invalid or has expired."
       return render :verify, status: :unprocessable_content
     end
@@ -53,7 +53,7 @@ class UsersController < ApplicationController
     session.delete(:pending_signup)
     session[:user_id] = @user.id
     redirect_to root_path, notice: "Welcome to Goldenly, #{@user.full_name}!"
-  rescue ActiveRecord::RecordInvalid, TwilioVerify::ConfigurationError, Twilio::REST::RestError => error
+  rescue ActiveRecord::RecordInvalid, EmailOtp::DeliveryError, TwilioVerify::ConfigurationError, Twilio::REST::RestError => error
     flash.now[:alert] = error.message
     render :verify, status: :unprocessable_content
   end

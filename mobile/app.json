@@ -3,11 +3,20 @@
     "name": "Goldenly",
     "slug": "goldenly",
     "scheme": "goldenly",
+    "icon": "./assets/goldenly-app-icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow Goldenly to use the microphone for your voice request.",
+          "speechRecognitionPermission": "Allow Goldenly to convert your voice request to text.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false

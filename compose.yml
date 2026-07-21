@@ -13,6 +13,11 @@ services:
       timeout: 5s
       retries: 10
 
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8026:8025"
+
   web:
     build:
       context: .
@@ -20,6 +25,8 @@ services:
     command: bash ./bin/docker-entrypoint-dev
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgres://goldenly:goldenly@db:5432/goldenly_development
       RAILS_ENV: development
@@ -28,6 +35,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mailpit:
+        condition: service_started
 
 volumes:
   postgres_data:

@@ -11,10 +11,10 @@ class SessionsController < ApplicationController
       return render :new, status: :unprocessable_content
     end
 
-    TwilioVerify.send_code(identifier)
+    OneTimeVerification.send_code(identifier)
     session[:pending_login_identifier] = identifier
     redirect_to verify_session_path, notice: "We sent a verification code to #{identifier}."
-  rescue AuthenticationIdentifier::InvalidIdentifier, TwilioVerify::ConfigurationError, Twilio::REST::RestError => error
+  rescue AuthenticationIdentifier::InvalidIdentifier, EmailOtp::DeliveryError, TwilioVerify::ConfigurationError, Twilio::REST::RestError => error
     flash.now[:alert] = error.message
     render :new, status: :unprocessable_content
   end
@@ -27,7 +27,7 @@ class SessionsController < ApplicationController
     identifier = pending_identifier
     return redirect_to new_session_path, alert: "Start sign in again." unless identifier
 
-    if TwilioVerify.approved?(identifier, params[:code])
+    if OneTimeVerification.approved?(identifier, params[:code])
       user = AuthenticationIdentifier.find_user(identifier)
       session.delete(:pending_login_identifier)
       session[:user_id] = user.id
@@ -36,7 +36,7 @@ class SessionsController < ApplicationController
       flash.now[:alert] = "That verification code is invalid or has expired."
       render :verify, status: :unprocessable_content
     end
-  rescue TwilioVerify::ConfigurationError, Twilio::REST::RestError => error
+  rescue EmailOtp::DeliveryError, TwilioVerify::ConfigurationError, Twilio::REST::RestError => error
     flash.now[:alert] = error.message
     render :verify, status: :unprocessable_content
   end

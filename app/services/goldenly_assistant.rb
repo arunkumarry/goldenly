@@ -14,8 +14,9 @@ class GoldenlyAssistant
     Do not claim that a reminder, booking, notification, or data share occurred. State that confirmation is required.
   PROMPT
 
-  def initialize(message)
+  def initialize(message, member: nil)
     @message = message.to_s.strip
+    @member = member
   end
 
   def reply
@@ -28,7 +29,7 @@ class GoldenlyAssistant
     })
     request.body = {
       model: ENV.fetch("OPENAI_MODEL"),
-      instructions: SAFETY_INSTRUCTIONS,
+      instructions: [ SAFETY_INSTRUCTIONS, member_context ].compact.join("\n\n"),
       input: @message,
       store: false
     }.to_json
@@ -45,8 +46,26 @@ class GoldenlyAssistant
 
   private
 
+  def member_context
+    return unless @member
+
+    reminders = @member.reminders.where(status: "pending").order(:scheduled_for).limit(5).map { |reminder| "#{reminder.title} at #{reminder.scheduled_for.strftime('%-d %b %-I:%M %p')}" }
+    services = @member.service_requests.order(created_at: :desc).limit(3).map { |request| "#{request.service_type} (#{request.status})" }
+    <<~CONTEXT
+      Member context for this conversation (use only to answer this member):
+      - Preferred language: #{@member.preferred_language}
+      - Location: #{@member.location.presence || "not recorded"}, #{@member.country}
+      - Upcoming reminders: #{reminders.any? ? reminders.join("; ") : "none recorded"}
+      - Recent service requests: #{services.any? ? services.join("; ") : "none recorded"}
+      Answer only from this context. Ask a short clarification if the answer is not recorded.
+    CONTEXT
+  end
+
   def fallback
+    reminder = @member&.reminders&.where(status: "pending")&.order(:scheduled_for)&.first
     case @message
+    when /when.*(medicine|tablet|reminder)|మందు.*ఎప్పుడు/i
+      reminder ? "Your next recorded reminder is #{reminder.title} at #{reminder.scheduled_for.strftime('%-I:%M %p on %-d %b')}. Please check with your clinician before changing medicine or dosage." : "I do not have a recorded medicine schedule for this member. Please check the care plan or ask a clinician."
     when /medicine|tablet|remind/i
       "I can prepare a medicine reminder. Please confirm the medicine name and time before I notify anyone."
     when /doctor|pain|health|sick/i

@@ -1,18 +1,18 @@
 class Api::V1::AuthenticationController < ActionController::API
-  rescue_from AuthenticationIdentifier::InvalidIdentifier, TwilioVerify::ConfigurationError, with: :render_bad_request
+  rescue_from AuthenticationIdentifier::InvalidIdentifier, EmailOtp::DeliveryError, TwilioVerify::ConfigurationError, with: :render_bad_request
   rescue_from Twilio::REST::RestError, with: :render_bad_request
 
   def request_code
     identifier = AuthenticationIdentifier.normalize(params.require(:identifier))
-    TwilioVerify.send_code(identifier)
-    render json: { identifier: identifier, channel: TwilioVerify.channel_for(identifier), message: "Verification code sent." }, status: :accepted
+    OneTimeVerification.send_code(identifier)
+    render json: { identifier: identifier, channel: OneTimeVerification.channel_for(identifier), message: "Verification code sent." }, status: :accepted
   end
 
   def sign_in
     identifier = AuthenticationIdentifier.normalize(params.require(:identifier))
     user = AuthenticationIdentifier.find_user(identifier)
     return render json: { error: "No account was found." }, status: :not_found unless user
-    return render json: { error: "Invalid or expired verification code." }, status: :unprocessable_content unless TwilioVerify.approved?(identifier, params.require(:code))
+    return render json: { error: "Invalid or expired verification code." }, status: :unprocessable_content unless OneTimeVerification.approved?(identifier, params.require(:code))
 
     render json: { user: user_payload(user), tokens: MobileTokenIssuer.new(user).issue }
   end
@@ -20,7 +20,7 @@ class Api::V1::AuthenticationController < ActionController::API
   def sign_up
     identifier = AuthenticationIdentifier.normalize(params.require(:identifier))
     return render json: { error: "An account already exists for that email or phone number." }, status: :unprocessable_content if AuthenticationIdentifier.find_user(identifier)
-    return render json: { error: "Invalid or expired verification code." }, status: :unprocessable_content unless TwilioVerify.approved?(identifier, params.require(:code))
+    return render json: { error: "Invalid or expired verification code." }, status: :unprocessable_content unless OneTimeVerification.approved?(identifier, params.require(:code))
 
     user = nil
     User.transaction do

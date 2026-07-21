@@ -15,6 +15,7 @@ Rails.application.routes.draw do
   get "care-timeline", to: "dashboard#timeline", as: :care_timeline
   get "services", to: "dashboard#services", as: :services
   post "assistant/messages", to: "assistant_messages#create", as: :assistant_messages
+  post "assistant/actions/confirm", to: "assistant_messages#confirm", as: :confirm_assistant_action
   resources :members, only: %i[new create]
   resource :member, only: %i[edit update]
   resources :reminders, only: %i[new create update]
@@ -29,6 +30,8 @@ Rails.application.routes.draw do
       post "auth/sign-in", to: "authentication#sign_in"
       post "auth/sign-up", to: "authentication#sign_up"
       post "auth/refresh", to: "authentication#refresh"
+      post "care-agent/messages", to: "care_agent#message"
+      post "care-agent/actions/confirm", to: "care_agent#confirm"
       resource :dashboard, only: :show
       resources :service_requests, only: %i[index create]
       resources :reminders, only: %i[index create]

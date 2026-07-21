@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_21_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_21_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -23,6 +23,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_110000) do
     t.bigint "user_id", null: false
     t.index ["token_digest"], name: "index_authentication_tokens_on_token_digest", unique: true
     t.index ["user_id"], name: "index_authentication_tokens_on_user_id"
+  end
+
+  create_table "email_verification_codes", force: :cascade do |t|
+    t.integer "attempts_count", default: 0, null: false
+    t.string "code_digest", null: false
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.string "identifier", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "used_at"
+    t.index ["identifier"], name: "index_email_verification_codes_on_identifier", unique: true
+  end
+
+  create_table "emergency_alerts", force: :cascade do |t|
+    t.datetime "confirmed_at"
+    t.string "country"
+    t.datetime "created_at", null: false
+    t.string "emergency_number"
+    t.string "location"
+    t.bigint "member_id", null: false
+    t.text "message"
+    t.boolean "share_location", default: false, null: false
+    t.string "status", default: "awaiting_confirmation", null: false
+    t.integer "trusted_contact_count", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["member_id"], name: "index_emergency_alerts_on_member_id"
   end
 
   create_table "members", force: :cascade do |t|
@@ -57,6 +83,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_110000) do
 
   create_table "service_requests", force: :cascade do |t|
     t.string "assigned_provider_name"
+    t.string "assigned_provider_phone"
     t.datetime "confirmed_at"
     t.datetime "created_at", null: false
     t.bigint "member_id", null: false
@@ -95,6 +122,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_110000) do
   end
 
   add_foreign_key "authentication_tokens", "users"
+  add_foreign_key "emergency_alerts", "members"
   add_foreign_key "members", "users"
   add_foreign_key "reminders", "members"
   add_foreign_key "service_requests", "members"

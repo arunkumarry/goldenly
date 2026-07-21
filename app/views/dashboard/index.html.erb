@@ -53,13 +53,30 @@
         <section class="panel quick-actions">
           <div class="panel-heading"><div><p class="eyebrow">QUICK ACTIONS</p><h2>What do you need?</h2></div></div>
           <a href="<%= new_service_request_path %>">✦ <span>Request a service</span><b>→</b></a>
-          <a href="#assistant">◉ <span>Talk to Goldenly</span><b>→</b></a>
+          <button type="button" data-agent-open>◉ <span>Talk to Goldenly</span><b>→</b></button>
           <a href="<%= edit_member_path %>">▤ <span>Edit member profile</span><b>→</b></a>
           <button class="sos-button">✚ <span>SOS · Emergency help</span><b>→</b></button>
         </section>
-        <section class="assistant-card" id="assistant">
+        <section class="assistant-card" id="assistant" data-care-agent data-message-url="<%= assistant_messages_path %>" data-confirm-url="<%= confirm_assistant_action_path %>">
           <div class="assistant-orb">✦</div><div><p>Goldenly AI</p><strong>“How can I help today?”</strong></div>
-          <a href="<%= new_reminder_path %>" class="outline-button">Add a reminder</a>
+          <button type="button" class="outline-button" data-agent-open>Talk now</button>
+
+          <dialog class="agent-dialog" aria-label="Talk to Goldenly">
+            <div class="agent-dialog-header"><div><p class="eyebrow">GOLDENLY VOICE ASSISTANT</p><h2>How can I help?</h2></div><button type="button" class="dialog-close" data-agent-close aria-label="Close">×</button></div>
+            <p class="agent-intro">Ask about this member’s recorded care plan, reminders, services, or urgent help. English and Telugu are supported.</p>
+            <label class="agent-label" for="agent-language">Language</label>
+            <select id="agent-language" data-agent-language><option>English</option><option>Telugu</option></select>
+            <label class="agent-label" for="agent-message">What do you need?</label>
+            <textarea id="agent-message" data-agent-input placeholder="For example: When is my physiotherapy? / నా మందు ఎప్పుడు తీసుకోవాలి?"></textarea>
+            <div class="agent-actions"><button type="button" class="agent-secondary" data-agent-microphone>Speak</button><button type="button" class="agent-primary" data-agent-submit>Ask Goldenly</button></div>
+            <p class="agent-reply" data-agent-reply hidden aria-live="polite"></p>
+            <section class="agent-proposal" data-agent-proposal hidden aria-live="polite">
+              <strong data-proposal-title></strong><p data-proposal-summary></p><p data-proposal-confirmation></p>
+              <label class="agent-location"><input type="checkbox" data-agent-share-location> Include my saved location with an emergency alert</label>
+              <button type="button" class="agent-primary" data-agent-confirm>Confirm action</button>
+            </section>
+            <p class="agent-safety">Goldenly does not diagnose, prescribe, or change medication. For immediate danger, call local emergency services.</p>
+          </dialog>
         </section>
         <section class="panel request-panel">
           <div class="panel-heading"><div><p class="eyebrow">SERVICE REQUESTS</p><h2>Confirm before dispatch</h2></div></div>
