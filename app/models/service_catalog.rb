@@ -7,7 +7,8 @@ class ServiceCatalog < ApplicationRecord
     shopping: 2,
     transport: 3,
     companion_visit: 4,
-    digital_assistance: 5
+    digital_assistance: 5,
+    diagnostic_service: 6
   }
 
   validates :name, :description, presence: true
@@ -18,6 +19,7 @@ class ServiceCatalog < ApplicationRecord
   def self.for_service_type(service_type)
     normalized = service_type.to_s.downcase
     kind = case normalized
+    when /diagnostic|blood|x[ -]?ray|urine|kidney|lab(?:oratory)?|scan|pathology/ then :diagnostic_service
     when /household|clean|cook|errand/ then :household_help
     when /shop|grocery|essential/ then :shopping
     when /transport|ride/ then :transport

@@ -1,0 +1,114 @@
+<% content_for :title, "Goldenly — Care that stays connected" %>
+
+<main class="landing-page" id="home">
+  <header class="landing-nav">
+    <%= link_to root_path, class: "landing-brand", aria: { label: "Goldenly home" } do %>
+      <%= image_tag "goldenly-logo.png", alt: "", class: "landing-logo" %>
+      <span>Goldenly</span>
+    <% end %>
+
+    <nav class="landing-links" aria-label="Main navigation">
+      <a href="#home">Home</a>
+      <a href="#services">Services</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="#pricing">Pricing</a>
+    </nav>
+
+    <div class="landing-nav-actions">
+      <%= link_to "Provider platform", provider_platform_path, class: "landing-provider-link" %>
+      <% if current_user %>
+        <%= link_to "My dashboard", dashboard_path, class: "landing-login" %>
+      <% else %>
+        <%= link_to "Log in", new_session_path, class: "landing-login" %>
+      <% end %>
+      <%= link_to(current_user ? "Open care" : "Sign up", current_user ? dashboard_path : new_user_path, class: "landing-button landing-button-small") %>
+    </div>
+  </header>
+
+  <section class="landing-hero">
+    <div class="landing-hero-copy">
+      <p class="landing-kicker"><span></span> Care, coordinated around real life</p>
+      <h1>More confidence for every <em>day of care.</em></h1>
+      <p class="landing-lead">Goldenly brings reminders, trusted-circle updates, and everyday support into one calm place—whether you are caring for yourself or someone you love.</p>
+      <div class="landing-hero-actions">
+        <%= link_to "Start your care plan", new_user_path, class: "landing-button" %>
+        <a href="#how-it-works" class="landing-text-button">See how Goldenly works <span>↓</span></a>
+      </div>
+      <div class="landing-trust-row">
+        <span>◉ Built for members and families</span>
+        <span>◉ Your care, your trusted circle</span>
+      </div>
+    </div>
+
+    <div class="landing-hero-visual" aria-label="An example Goldenly care plan">
+      <div class="landing-visual-glow"></div>
+      <article class="landing-profile-card landing-float-one">
+        <div class="landing-avatar">S</div>
+        <div><strong>Sal's care plan</strong><small>Today looks well supported</small></div>
+        <span class="landing-check">✓</span>
+      </article>
+      <article class="landing-plan-card">
+        <div class="landing-plan-heading"><span>Tuesday, 22 July</span><b>My plan</b></div>
+        <div class="landing-plan-item"><i class="landing-plan-icon medicine">+</i><div><strong>Take eye drops</strong><small>4:00 PM · Daily reminder</small></div><span class="landing-status">Due soon</span></div>
+        <div class="landing-plan-item"><i class="landing-plan-icon support">⌁</i><div><strong>Health check-up</strong><small>Tomorrow · 10:00 AM</small></div><span class="landing-status soft">Scheduled</span></div>
+        <div class="landing-circle-preview"><div class="landing-mini-avatars"><b>J</b><b>M</b><b>R</b></div><span>Your circle is in the loop</span><i>→</i></div>
+      </article>
+      <article class="landing-note-card landing-float-two"><span>✦</span><div><strong>Care that follows through</strong><small>One plan, shared with the right people.</small></div></article>
+    </div>
+  </section>
+
+  <section class="landing-proof" aria-label="Goldenly benefits">
+    <div><b>One calm place</b><span>for everyday care coordination</span></div>
+    <div><b>Member-first</b><span>with consent and control built in</span></div>
+    <div><b>Global by design</b><span>for families wherever life happens</span></div>
+  </section>
+
+  <section class="landing-showcase" data-controller="reveal">
+    <div class="landing-showcase-heading"><p class="landing-kicker"><span></span> Made for the moments that matter</p><h2>One connected care experience, on every screen.</h2><p>Families can coordinate care from the web, while members have a simpler mobile companion for their plan, requests, and voice support.</p></div>
+    <div class="landing-showcase-grid">
+      <article class="landing-web-shot landing-reveal" data-reveal-target="item">
+        <div class="landing-preview-label"><span class="landing-window-dots"><i></i><i></i><i></i></span><strong>Goldenly web</strong><small>Care dashboard</small></div>
+        <%= image_tag "goldenly-web-dashboard.png", alt: "Goldenly web dashboard showing reminders, care activity, quick actions, and trusted circle", class: "landing-web-image" %>
+      </article>
+      <article class="landing-mobile-story landing-reveal" data-reveal-target="item">
+        <div class="landing-mobile-copy"><span>THE MOBILE COMPANION</span><h3>Care support that fits in your hand.</h3><p>Members can see what is next, request help, and talk to Goldenly when typing is not the easiest option.</p><ul><li>Voice-first Goldenly AI</li><li>Reminders and care requests</li><li>Trusted-circle connection</li></ul></div>
+        <div class="landing-phone" aria-label="Goldenly mobile app preview">
+          <div class="landing-phone-speaker"></div><div class="landing-phone-header"><b>G</b><span>Goldenly</span><i>⋮</i></div>
+          <p class="landing-phone-kicker">TODAY</p><h4>Hello, Sal</h4><div class="landing-phone-wellbeing"><span>♡</span><p><b>You’re doing well today</b><small>Two things in your plan</small></p></div>
+          <p class="landing-phone-kicker">YOUR PLAN</p><div class="landing-phone-task"><i>+</i><p><b>Take eye drops</b><small>4:00 PM · Daily</small></p><em>Due soon</em></div><div class="landing-phone-task"><i>⌁</i><p><b>Health check-up</b><small>Tomorrow · 10:00 AM</small></p></div>
+          <div class="landing-phone-talk">🎙 <span>Talk to Goldenly</span></div><div class="landing-phone-nav"><span>⌂</span><span>✦</span><span>♡</span><span>♧</span></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="landing-section landing-services" id="services">
+    <div class="landing-section-heading"><div><p class="landing-kicker"><span></span> Everyday care, made simpler</p><h2>Support that meets the moment.</h2></div><p>Start with the plan you need today. Provider matching is the next step of the Goldenly journey.</p></div>
+    <div class="landing-service-grid">
+      <article><i><%= render "landing/service_icon", icon: :health %></i><h3>Health check-ups</h3><p>Keep routine care visible and easy to plan around.</p></article>
+      <article><i><%= render "landing/service_icon", icon: :diagnostic %></i><h3>Diagnostic services</h3><p>Request lab tests and diagnostics with clear details.</p></article>
+      <article><i><%= render "landing/service_icon", icon: :household %></i><h3>Household help</h3><p>Coordinate practical support for life at home.</p></article>
+      <article><i><%= render "landing/service_icon", icon: :companion %></i><h3>Companion visits</h3><p>Make space for connection, comfort, and company.</p></article>
+      <article><i><%= render "landing/service_icon", icon: :shopping %></i><h3>Shopping support</h3><p>Turn everyday needs into a simple care request.</p></article>
+      <article><i><%= render "landing/service_icon", icon: :digital %></i><h3>Digital assistance</h3><p>Get help with the everyday digital tasks that matter.</p></article>
+    </div>
+  </section>
+
+  <section class="landing-section landing-how" id="how-it-works" data-controller="reveal">
+    <div class="landing-section-heading centered"><p class="landing-kicker"><span></span> A simpler way forward</p><h2>Care starts with a conversation.</h2><p>Set up a member profile, keep the plan clear, and include the people who should know.</p></div>
+    <div class="landing-steps">
+      <article class="landing-reveal" data-reveal-target="item"><span class="landing-step-number">01</span><i>◌</i><h3>Create a care space</h3><p>Add yourself or a family member, their location, and what matters most.</p><small>Member profile · Location · Preferences</small></article>
+      <div class="landing-step-line landing-reveal" aria-hidden="true" data-reveal-target="item"><span>→</span></div>
+      <article class="landing-reveal" data-reveal-target="item"><span class="landing-step-number">02</span><i>◷</i><h3>Plan every day</h3><p>Set reminders and request support at a time that works for the member.</p><small>Reminders · Services · Calendar</small></article>
+      <div class="landing-step-line landing-reveal" aria-hidden="true" data-reveal-target="item"><span>→</span></div>
+      <article class="landing-reveal" data-reveal-target="item"><span class="landing-step-number">03</span><i>♧</i><h3>Stay connected</h3><p>Invite the trusted circle and make care easier to follow together.</p><small>Access · Updates · Peace of mind</small></article>
+    </div>
+  </section>
+
+  <section class="landing-section landing-pricing" id="pricing">
+    <div class="landing-pricing-copy"><p class="landing-kicker"><span></span> Clear from the start</p><h2>Begin with the care you need now.</h2><p>Goldenly is being shaped with members, families, and future care providers. Start by creating your care space; provider plans will arrive with the provider platform.</p><%= link_to "Create a free care space", new_user_path, class: "landing-button" %></div>
+    <div class="landing-pricing-card"><p class="landing-pricing-label">MEMBER & FAMILY</p><h3>Start with care coordination</h3><p>Profiles, reminders, service requests, and a trusted circle in one place.</p><ul><li>Member and family profiles</li><li>Scheduled reminders</li><li>Care-request tracking</li></ul><span class="landing-pricing-note">Launch pricing will be shared before any paid plan begins.</span></div>
+  </section>
+
+  <footer class="landing-footer"><%= link_to root_path, class: "landing-brand" do %><%= image_tag "goldenly-logo.png", alt: "", class: "landing-logo" %><span>Goldenly</span><% end %><p>Care, connected with intention.</p><%= link_to "Provider platform", provider_platform_path %></footer>
+</main>

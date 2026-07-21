@@ -1,7 +1,7 @@
 class CareActionPlanner
   TELUGU = /[\u0C00-\u0C7F]/.freeze
   EMERGENCY_TERMS = /\b(sos|emergency|urgent help|help me now|ambulance)\b|అత్యవసర|అర్జెంట్|సహాయం కావాలి|ప్రమాదం/i.freeze
-  SERVICE_TERMS = /\b(health\s*check(?:up)?|healthcare|doctor|nurse|physio|physiotherapy|therapy|caregiver|support request|household|cleaning|cooking|errand|shopping|groceries|transport|ride|companion|digital assistance|phone help|device help)\b|ఆరోగ్య|డాక్టర్|నర్స్|ఫిజియో|థెరపీ/i.freeze
+  SERVICE_TERMS = /\b(health\s*check(?:up)?|healthcare|doctor|nurse|physio|physiotherapy|therapy|caregiver|support request|household|cleaning|cooking|errand|shopping|groceries|transport|ride|companion|digital assistance|phone help|device help|diagnostic|blood\s*test|x[ -]?ray|urine\s*test|kidney\s*test|lab(?:oratory)?\s*test|scan|pathology)\b|ఆరోగ్య|డాక్టర్|నర్స్|ఫిజియో|థెరపీ|రక్త పరీక్ష|ఎక్స్‌రే|మూత్ర పరీక్ష|కిడ్నీ పరీక్ష/i.freeze
   REMINDER_TERMS = /\b(remind|reminder|medicine|tablet|medication)\b|మందు|గుర్తు చేయి/i.freeze
 
   def initialize(care_profile:, message:, pending_service: nil)
@@ -98,6 +98,7 @@ class CareActionPlanner
   end
 
   def service_type
+    return "Diagnostic Service" if @message.match?(/diagnostic|blood\s*test|x[ -]?ray|urine\s*test|kidney\s*test|lab(?:oratory)?\s*test|scan|pathology|రక్త పరీక్ష|ఎక్స్‌రే|మూత్ర పరీక్ష|కిడ్నీ పరీక్ష/i)
     return "Household Help" if @message.match?(/household|cleaning|cooking|errand/i)
     return "Shopping" if @message.match?(/shopping|groceries/i)
     return "Transport" if @message.match?(/transport|ride/i)

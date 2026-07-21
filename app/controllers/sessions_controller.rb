@@ -33,7 +33,7 @@ class SessionsController < ApplicationController
       session[:user_id] = user.id
       session[:care_profile_id] = user.owned_care_profiles.first&.id || user.active_care_profile_links.first&.care_profile_id
       AuditTrail.record!(action: "account_user.signed_in", actor: user, metadata: { source: "web" })
-      redirect_to root_path, notice: "Welcome back, #{user.full_name}!"
+      redirect_to dashboard_path, notice: "Welcome back, #{user.full_name}!"
     else
       flash.now[:alert] = "That verification code is invalid or has expired."
       render :verify, status: :unprocessable_content

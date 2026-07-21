@@ -5,8 +5,10 @@
     <div><strong><%= reminder.title %></strong><small><%= reminder.recurrence&.humanize || "One-time reminder" %></small></div>
     <% if reminder.status == "completed" %>
       <span class="status-pill success">Completed</span>
-    <% else %>
+    <% elsif reminder.due? %>
       <%= button_to "Mark done", reminder_path(reminder), method: :patch, params: { reminder: { status: "completed" } }, class: "status-action" %>
+    <% else %>
+      <span class="status-pill">Upcoming</span>
     <% end %>
   </article>
 <% end %>

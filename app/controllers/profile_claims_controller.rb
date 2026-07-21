@@ -29,7 +29,7 @@ class ProfileClaimsController < ApplicationController
     session.delete(:pending_profile_claim)
     session[:user_id] = user.id
     session[:care_profile_id] = care_profile.id
-    redirect_to root_path, notice: "Your Goldenly care profile is now active."
+    redirect_to dashboard_path, notice: "Your Goldenly care profile is now active."
   rescue ActiveRecord::RecordInvalid, AuthenticationIdentifier::InvalidIdentifier, ProfileClaim::ClaimError => error
     @care_profile = @invitation.care_profile
     @access_links = @care_profile.care_profile_links.active.includes(:user)

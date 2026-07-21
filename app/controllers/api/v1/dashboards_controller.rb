@@ -7,7 +7,7 @@ class Api::V1::DashboardsController < ActionController::API
     care_profile = current_mobile_care_profile
 
     render json: {
-      care_profile: care_profile.slice(:id, :full_name, :preferred_language, :mobility_needs, :state, :country, :location),
+      care_profile: care_profile.slice(:id, :full_name, :preferred_language, :mobility_needs, :state, :address, :location, :city, :region, :country, :country_code, :postal_code, :latitude, :longitude, :google_place_id),
       care_profiles: current_mobile_user.active_care_profile_links.map { |link| link.care_profile.slice(:id, :full_name, :state).merge("relationship_to_person" => link.relationship_to_person) },
       reminders: care_profile.reminders.order(:scheduled_for).map { |reminder| reminder_payload(reminder) },
       service_catalogs: ServiceCatalog.available.map { |service| service_catalog_payload(service) },

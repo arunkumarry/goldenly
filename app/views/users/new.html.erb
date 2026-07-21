@@ -6,20 +6,22 @@
     <h1>Create your account</h1>
     <p class="workflow-intro">Set up your account and a private care profile, then verify the email or phone number you use.</p>
     <%= render "shared/errors", record: @user %><%= render "shared/errors", record: @care_profile %>
-    <%= form_with url: users_path, class: "workflow-form", data: { controller: "onboarding" } do |form| %>
+    <%= form_with url: users_path, class: "workflow-form", data: { controller: "onboarding identifier", action: "submit->identifier#prepare" } do |form| %>
       <div class="form-grid">
-        <%= label_tag "user_full_name", "Your name" %><%= text_field_tag "user[full_name]", @user.full_name, id: "user_full_name", required: true, autocomplete: "name" %>
-        <%= label_tag :identifier, "Email address or phone number" %><%= text_field_tag :identifier, nil, id: "identifier", required: true, autocomplete: "username", placeholder: "you@example.com or +14155552671" %>
-        <%= label_tag "user_country", "Your country" %><%= text_field_tag "user[country]", @user.country, id: "user_country", required: true, autocomplete: "country-name" %>
-        <%= label_tag "user_location", "Your city, state, or region" %><%= text_field_tag "user[location]", @user.location, id: "user_location" %>
+        <%= fields_for :user, @user do |user_form| %>
+          <%= user_form.label :full_name, "Your name" %><%= user_form.text_field :full_name, required: true, autocomplete: "name" %>
+          <%= render "shared/address_fields", form: user_form %>
+        <% end %>
+        <%= render "shared/identifier_fields" %>
         <hr class="form-divider">
         <p class="form-section-title">First care profile</p>
         <%= label_tag :setup_for, "Who is this profile for?" %><%= select_tag :setup_for, options_for_select([["Myself", "self"], ["Someone else", "someone_else"]]), data: { onboarding_target: "choice", action: "change->onboarding#toggle" } %>
-        <%= label_tag "care_profile_full_name", "Person’s name" %><%= text_field_tag "care_profile[full_name]", @care_profile.full_name, id: "care_profile_full_name", required: true %>
-        <%= label_tag "care_profile_phone_number", "Person’s phone number (optional)" %><%= telephone_field_tag "care_profile[phone_number]", @care_profile.phone_number, id: "care_profile_phone_number" %>
-        <%= label_tag "care_profile_preferred_language", "Preferred language" %><%= select_tag "care_profile[preferred_language]", options_for_select(["English", "Telugu"], @care_profile.preferred_language), id: "care_profile_preferred_language", required: true %>
-        <%= label_tag "care_profile_country", "Person’s country" %><%= text_field_tag "care_profile[country]", @care_profile.country, id: "care_profile_country", required: true, autocomplete: "country-name" %>
-        <%= label_tag "care_profile_location", "Person’s city, state, or region" %><%= text_field_tag "care_profile[location]", @care_profile.location, id: "care_profile_location" %>
+        <%= fields_for :care_profile, @care_profile do |care_profile_form| %>
+          <%= care_profile_form.label :full_name, "Person’s name" %><%= care_profile_form.text_field :full_name, required: true %>
+          <%= care_profile_form.label :phone_number, "Person’s phone number (optional)" %><%= care_profile_form.telephone_field :phone_number %>
+          <%= care_profile_form.label :preferred_language, "Preferred language" %><%= care_profile_form.select :preferred_language, ApplicationHelper::SUPPORTED_LANGUAGES, required: true %>
+          <%= render "shared/address_fields", form: care_profile_form %>
+        <% end %>
         <div data-onboarding-target="coordinatorFields"><%= label_tag :relationship_to_person, "Relationship to this person" %><%= select_tag :relationship_to_person, options_for_select([["Family member", "family"], ["Spouse or partner", "spouse"], ["Someone I support", "supported"]]) %><%= label_tag :consent_basis, "Consent or basis for setup" %><%= text_field_tag :consent_basis, nil, placeholder: "They asked me to coordinate their care" %></div>
       </div>
       <%= form.submit "Send verification code", class: "primary-button" %>

@@ -1,5 +1,8 @@
 class User < ApplicationRecord
+  include StructuredPlace
+
   has_many :authentication_tokens, dependent: :destroy
+  has_many :device_push_tokens, dependent: :destroy
   has_many :care_profile_links, dependent: :destroy
   has_many :care_profiles, through: :care_profile_links
   has_many :owned_care_profiles, class_name: "CareProfile", foreign_key: :owner_user_id, dependent: :nullify

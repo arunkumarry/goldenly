@@ -6,17 +6,25 @@ import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "expo-spe
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { clearTokens, getSession, requestCode, saveSession, setActiveCareProfile, signIn, signUp } from "../services/auth";
 import { askCareAgent, confirmCareAction } from "../services/careAgent";
-import { createServiceRequest, fetchDashboard } from "../services/careData";
+import { createServiceRequest, fetchDashboard, registerPushToken, unregisterPushToken } from "../services/careData";
+import { getPlace, searchPlaces } from "../services/places";
 import { forceSpeakerOutput } from "../modules/goldenly-audio-session/src";
+import { cancelLocalCareNotifications, clearStoredPushToken, registerForRemoteNotifications, scheduleLocalCareNotifications, storedPushToken } from "../services/notifications";
 
 const colors = {
   blue: "#0b4f6c", sky: "#01baef", red: "#b80c09", canvas: "#fbfbff", ink: "#040f16", muted: "#61727a", line: "#d9e4e7", success: "#177b59"
 };
 
 const serviceIcons = {
-  medical_health_checkup: "✚", household_help: "⌂", shopping: "▧",
+  medical_health_checkup: "✚", diagnostic_service: "⌁", household_help: "⌂", shopping: "▧",
   transport: "◌", companion_visit: "♡", digital_assistance: "▣"
 };
+
+const phoneCountryCodes = [
+  ["India", "+91"], ["United States / Canada", "+1"], ["United Kingdom", "+44"],
+  ["Australia", "+61"], ["Singapore", "+65"], ["United Arab Emirates", "+971"]
+];
+const supportedLanguages = ["English", "Telugu", "Hindi", "Spanish", "Chinese (Mandarin)", "Arabic", "French", "German", "Portuguese", "Japanese", "Korean"];
 
 const dateTimeLabel = (value) => value ? new Date(value).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "Time to be arranged";
 
@@ -41,26 +49,62 @@ function ModalSheet({ visible, title, children, onClose }) {
   </Modal>;
 }
 
+function AddressAutocomplete({ onSelected }) {
+  const [address, setAddress] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [error, setError] = useState("");
+  const searchTimerRef = useRef(null);
+  const sessionTokenRef = useRef(`goldenly${Date.now()}${Math.random().toString(36).slice(2)}`);
+
+  useEffect(() => () => clearTimeout(searchTimerRef.current), []);
+
+  const search = (value) => {
+    setAddress(value); setError("");
+    clearTimeout(searchTimerRef.current);
+    if (value.trim().length < 3) return setSuggestions([]);
+    searchTimerRef.current = setTimeout(async () => {
+      try { setSuggestions((await searchPlaces(value.trim(), sessionTokenRef.current)).suggestions || []); }
+      catch (requestError) { setError(requestError.message); setSuggestions([]); }
+    }, 300);
+  };
+  const select = async (placeId) => {
+    try {
+      const place = (await getPlace(placeId, sessionTokenRef.current)).place;
+      setAddress(place.address || ""); setSuggestions([]); onSelected(place);
+    } catch (requestError) { setError(requestError.message); }
+  };
+
+  return <View style={styles.addressPicker}><TextInput value={address} onChangeText={search} style={styles.authInput} placeholder="Home address" placeholderTextColor={colors.muted} autoComplete="street-address" />{suggestions.map((suggestion) => <TouchableOpacity key={suggestion.place_id} accessibilityRole="button" onPress={() => select(suggestion.place_id)} style={styles.addressSuggestion}><Text style={styles.addressSuggestionText}>{suggestion.text}</Text></TouchableOpacity>)}{suggestions.length ? <Text style={styles.googleAttribution}>Powered by Google</Text> : null}{error ? <Text style={styles.authError}>{error}</Text> : null}</View>;
+}
+
 function AuthenticationScreen({ onAuthenticated }) {
   const [mode, setMode] = useState("signIn");
   const [step, setStep] = useState("details");
   const [identifier, setIdentifier] = useState("");
+  const [identifierType, setIdentifierType] = useState("email");
+  const [phoneCountryCode, setPhoneCountryCode] = useState("+91");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [code, setCode] = useState("");
   const [fullName, setFullName] = useState("");
   const [country, setCountry] = useState("");
+  const [place, setPlace] = useState(null);
   const [memberName, setMemberName] = useState("");
+  const [preferredLanguage, setPreferredLanguage] = useState("English");
   const [setupFor, setSetupFor] = useState("self");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const selectedIdentifier = () => identifierType === "phone" ? `${phoneCountryCode}${phoneNumber.replace(/\D/g, "")}` : identifier.trim();
+
   const sendCode = async () => {
     setBusy(true); setError("");
-    try { await requestCode(identifier); setStep("code"); } catch (requestError) { setError(requestError.message); } finally { setBusy(false); }
+    try { const value = selectedIdentifier(); await requestCode(value); setIdentifier(value); setStep("code"); } catch (requestError) { setError(requestError.message); } finally { setBusy(false); }
   };
   const verify = async () => {
     setBusy(true); setError("");
     try {
-      const result = mode === "signIn" ? await signIn(identifier, code) : await signUp({ identifier, code, setup_for: setupFor === "self" ? "self" : "someone_else", relationship_to_person: setupFor === "self" ? "self" : "family", consent_basis: setupFor === "self" ? undefined : "Coordinator confirmed initial setup", user: { full_name: fullName, country }, care_profile: { full_name: memberName, preferred_language: "English", country } });
+      const placeAttributes = place ? { address: place.address, location: place.city, city: place.city, region: place.region, country: place.country || country, country_code: place.country_code, postal_code: place.postal_code, latitude: place.latitude, longitude: place.longitude, google_place_id: place.place_id } : { country };
+      const result = mode === "signIn" ? await signIn(identifier, code) : await signUp({ identifier, code, setup_for: setupFor === "self" ? "self" : "someone_else", relationship_to_person: setupFor === "self" ? "self" : "family", consent_basis: setupFor === "self" ? undefined : "Coordinator confirmed initial setup", user: { full_name: fullName, ...placeAttributes }, care_profile: { full_name: memberName, preferred_language: preferredLanguage, ...placeAttributes } });
       const sessionUser = { ...result.user, care_profiles: result.care_profiles || [], active_care_profile_id: result.active_care_profile_id };
       await saveSession(result.user, result.tokens, { care_profiles: sessionUser.care_profiles, active_care_profile_id: sessionUser.active_care_profile_id });
       onAuthenticated(sessionUser);
@@ -73,7 +117,7 @@ function AuthenticationScreen({ onAuthenticated }) {
     <Text style={styles.authTitle}>{mode === "signIn" ? "Welcome back" : "Create your account"}</Text>
     <Text style={styles.authIntro}>{step === "code" ? `Enter the code sent to ${identifier}.` : "Use your email address or phone number to securely continue."}</Text>
     <View style={styles.modeRow}><TouchableOpacity onPress={() => switchMode("signIn")} style={[styles.modeButton, mode === "signIn" && styles.modeButtonActive]}><Text style={[styles.modeText, mode === "signIn" && styles.modeTextActive]}>Sign in</Text></TouchableOpacity><TouchableOpacity onPress={() => switchMode("signUp")} style={[styles.modeButton, mode === "signUp" && styles.modeButtonActive]}><Text style={[styles.modeText, mode === "signUp" && styles.modeTextActive]}>Sign up</Text></TouchableOpacity></View>
-    {step === "details" ? <View style={styles.authForm}>{mode === "signUp" && <><TextInput value={fullName} onChangeText={setFullName} style={styles.authInput} placeholder="Your name" placeholderTextColor={colors.muted} /><TextInput value={country} onChangeText={setCountry} style={styles.authInput} placeholder="Country" placeholderTextColor={colors.muted} /><View style={styles.modeRow}><TouchableOpacity onPress={() => setSetupFor("self")} style={[styles.modeButton, setupFor === "self" && styles.modeButtonActive]}><Text style={[styles.modeText, setupFor === "self" && styles.modeTextActive]}>For myself</Text></TouchableOpacity><TouchableOpacity onPress={() => setSetupFor("someoneElse")} style={[styles.modeButton, setupFor === "someoneElse" && styles.modeButtonActive]}><Text style={[styles.modeText, setupFor === "someoneElse" && styles.modeTextActive]}>For someone else</Text></TouchableOpacity></View><TextInput value={memberName} onChangeText={setMemberName} style={styles.authInput} placeholder={setupFor === "self" ? "Your care profile name" : "Person’s care profile name"} placeholderTextColor={colors.muted} /></>}<TextInput value={identifier} onChangeText={setIdentifier} style={styles.authInput} placeholder="Email or +phone number" placeholderTextColor={colors.muted} autoCapitalize="none" autoCorrect={false} />{error ? <Text style={styles.authError}>{error}</Text> : null}<ActionButton onPress={sendCode}>{busy ? "Sending…" : "Send verification code"}</ActionButton></View> : <View style={styles.authForm}><TextInput value={code} onChangeText={setCode} style={styles.authInput} placeholder="Verification code" placeholderTextColor={colors.muted} keyboardType="number-pad" autoComplete="one-time-code" />{error ? <Text style={styles.authError}>{error}</Text> : null}<ActionButton onPress={verify}>{busy ? "Verifying…" : mode === "signIn" ? "Verify and sign in" : "Verify and create account"}</ActionButton><TouchableOpacity onPress={() => setStep("details")}><Text style={styles.changeIdentifier}>Use a different email or phone number</Text></TouchableOpacity></View>}
+    {step === "details" ? <View style={styles.authForm}>{mode === "signUp" && <><TextInput value={fullName} onChangeText={setFullName} style={styles.authInput} placeholder="Your name" placeholderTextColor={colors.muted} /><AddressAutocomplete onSelected={(selectedPlace) => { setPlace(selectedPlace); setCountry(selectedPlace.country || ""); }} /><TextInput value={country} onChangeText={setCountry} style={styles.authInput} placeholder="Country" placeholderTextColor={colors.muted} /><View style={styles.modeRow}><TouchableOpacity onPress={() => setSetupFor("self")} style={[styles.modeButton, setupFor === "self" && styles.modeButtonActive]}><Text style={[styles.modeText, setupFor === "self" && styles.modeTextActive]}>For myself</Text></TouchableOpacity><TouchableOpacity onPress={() => setSetupFor("someoneElse")} style={[styles.modeButton, setupFor === "someoneElse" && styles.modeButtonActive]}><Text style={[styles.modeText, setupFor === "someoneElse" && styles.modeTextActive]}>For someone else</Text></TouchableOpacity></View><TextInput value={memberName} onChangeText={setMemberName} style={styles.authInput} placeholder={setupFor === "self" ? "Your care profile name" : "Person’s care profile name"} placeholderTextColor={colors.muted} /><Text style={styles.authFieldLabel}>Preferred language</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.phoneCodeRow}>{supportedLanguages.map((language) => <TouchableOpacity key={language} accessibilityRole="button" onPress={() => setPreferredLanguage(language)} style={[styles.phoneCode, preferredLanguage === language && styles.phoneCodeActive]}><Text style={[styles.phoneCodeText, preferredLanguage === language && styles.phoneCodeTextActive]}>{language}</Text></TouchableOpacity>)}</ScrollView></>}<View style={styles.modeRow}><TouchableOpacity onPress={() => setIdentifierType("email")} style={[styles.modeButton, identifierType === "email" && styles.modeButtonActive]}><Text style={[styles.modeText, identifierType === "email" && styles.modeTextActive]}>Email</Text></TouchableOpacity><TouchableOpacity onPress={() => setIdentifierType("phone")} style={[styles.modeButton, identifierType === "phone" && styles.modeButtonActive]}><Text style={[styles.modeText, identifierType === "phone" && styles.modeTextActive]}>Phone</Text></TouchableOpacity></View>{identifierType === "email" ? <TextInput value={identifier} onChangeText={setIdentifier} style={styles.authInput} placeholder="Email address" placeholderTextColor={colors.muted} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" /> : <><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.phoneCodeRow}>{phoneCountryCodes.map(([name, dialCode]) => <TouchableOpacity key={dialCode} accessibilityRole="button" onPress={() => setPhoneCountryCode(dialCode)} style={[styles.phoneCode, phoneCountryCode === dialCode && styles.phoneCodeActive]}><Text style={[styles.phoneCodeText, phoneCountryCode === dialCode && styles.phoneCodeTextActive]}>{name} {dialCode}</Text></TouchableOpacity>)}</ScrollView><View style={styles.phoneInputRow}><Text style={styles.phonePrefix}>{phoneCountryCode}</Text><TextInput value={phoneNumber} onChangeText={setPhoneNumber} style={styles.phoneInput} placeholder="Phone number" placeholderTextColor={colors.muted} keyboardType="phone-pad" autoComplete="tel" /></View></>}{error ? <Text style={styles.authError}>{error}</Text> : null}<ActionButton onPress={sendCode}>{busy ? "Sending…" : "Send verification code"}</ActionButton></View> : <View style={styles.authForm}><TextInput value={code} onChangeText={setCode} style={styles.authInput} placeholder="Verification code" placeholderTextColor={colors.muted} keyboardType="number-pad" autoComplete="one-time-code" />{error ? <Text style={styles.authError}>{error}</Text> : null}<ActionButton onPress={verify}>{busy ? "Verifying…" : mode === "signIn" ? "Verify and sign in" : "Verify and create account"}</ActionButton><TouchableOpacity onPress={() => setStep("details")}><Text style={styles.changeIdentifier}>Use a different email or phone number</Text></TouchableOpacity></View>}
     <Text style={styles.authSafety}>Goldenly uses one-time codes to protect your account. We do not ask for a password in the mobile app.</Text>
   </ScrollView></SafeAreaView>;
 }
@@ -88,6 +132,7 @@ export default function Home() {
   const [serviceCatalogs, setServiceCatalogs] = useState([]);
   const [trustedCircle, setTrustedCircle] = useState([]);
   const [careDataBusy, setCareDataBusy] = useState(false);
+  const [notificationMode, setNotificationMode] = useState("unknown");
   const [selectedHelp, setSelectedHelp] = useState(null);
   const [serviceDateTime, setServiceDateTime] = useState(() => new Date(Date.now() + 60 * 60 * 1000));
   const [serviceNotes, setServiceNotes] = useState("");
@@ -96,6 +141,7 @@ export default function Home() {
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [assistantReply, setAssistantReply] = useState("");
+  const [assistantMessages, setAssistantMessages] = useState([]);
   const [assistantProposal, setAssistantProposal] = useState(null);
   const [assistantConversationToken, setAssistantConversationToken] = useState(null);
   const [assistantBusy, setAssistantBusy] = useState(false);
@@ -116,6 +162,10 @@ export default function Home() {
   const sendMessageRef = useRef(null);
   const confirmAssistantProposalRef = useRef(null);
   const voiceTurnRef = useRef(0);
+  const chatScrollRef = useRef(null);
+  const chatMessageSequenceRef = useRef(0);
+
+  const nextChatMessageId = (role) => `${role}-${++chatMessageSequenceRef.current}`;
 
   assistantOpenRef.current = assistantOpen;
   assistantProposalRef.current = assistantProposal;
@@ -153,7 +203,7 @@ export default function Home() {
   };
   startListeningRef.current = startListening;
 
-  const speakToMember = (text, { listenAfter = false } = {}) => {
+  const speakToMember = (text, { listenAfter = false, closeAfter = false } = {}) => {
     if (!text) return;
     const voiceTurn = ++voiceTurnRef.current;
     ExpoSpeechRecognitionModule.stop();
@@ -178,11 +228,23 @@ export default function Home() {
       onDone: () => {
         if (voiceTurn !== voiceTurnRef.current) return;
         setSpeaking(false);
+        if (closeAfter) {
+          setAssistantConversationToken(null);
+          setAssistantProposal(null);
+          setAssistantOpen(false);
+          return;
+        }
         if (listenAfter && assistantOpenRef.current) startListeningRef.current?.();
       },
       onError: () => {
         if (voiceTurn !== voiceTurnRef.current) return;
         setSpeaking(false);
+        if (closeAfter) {
+          setAssistantConversationToken(null);
+          setAssistantProposal(null);
+          setAssistantOpen(false);
+          return;
+        }
         setAssistantReply("I could not speak that response aloud. You can read it here or try again.");
       }
     });
@@ -210,6 +272,24 @@ export default function Home() {
   });
 
   useEffect(() => { getSession().then(setUser).finally(() => setAuthReady(true)); }, []);
+  useEffect(() => {
+    if (!user) return;
+
+    let active = true;
+    registerForRemoteNotifications().then(async (token) => {
+      if (!token) return active && setNotificationMode("local");
+
+      await registerPushToken(token, Platform.OS);
+      if (active) {
+        await cancelLocalCareNotifications();
+        setNotificationMode("push");
+      }
+    }).catch(() => {
+      if (active) setNotificationMode("local");
+    });
+
+    return () => { active = false; };
+  }, [user?.id]);
   useEffect(() => {
     let active = true;
     const languagePrefix = assistantLanguage === "Telugu" ? "te" : "en";
@@ -241,6 +321,7 @@ export default function Home() {
     const greeting = assistantLanguage === "Telugu"
       ? "నమస్కారం, నేను గోల్డెన్లీ. నేను మీకు ఏమి చేయగలను?"
       : "Hello, I am Goldenly. What can I do for you today?";
+    setAssistantMessages([{ id: nextChatMessageId("goldenly"), role: "assistant", text: greeting }]);
     speakToMemberRef.current?.(greeting, { listenAfter: true });
   }, [assistantOpen, user]);
   useEffect(() => () => Speech.stop(), []);
@@ -248,6 +329,7 @@ export default function Home() {
   const careProfiles = user?.care_profiles || [];
   const activeCareProfile = careProfiles.find((profile) => profile.id === user?.active_care_profile_id) || careProfiles[0];
   const handleExpiredSession = async () => {
+    await disableNotifications();
     await clearTokens();
     setAssistantOpen(false);
     setAssistantProposal(null);
@@ -267,13 +349,27 @@ export default function Home() {
         ...dashboard.service_requests.map((request) => ({ id: `service-${request.id}`, icon: serviceIcons[request.service_kind] || "✦", title: request.service_name || request.service_type, detail: request.status.replaceAll("_", " "), time: dateTimeLabel(request.preferred_time), kind: "service", done: request.status === "completed" }))
       ]);
       setTrustedCircle(dashboard.trusted_circle || []);
+      if (notificationMode === "local") {
+        await scheduleLocalCareNotifications({
+          careProfileId: activeCareProfile.id,
+          reminders: dashboard.reminders || [],
+          serviceRequests: dashboard.service_requests || []
+        });
+      }
     } catch (error) {
       if (error.message.includes("session has ended")) handleExpiredSession();
     } finally {
       setCareDataBusy(false);
     }
   };
-  useEffect(() => { loadCareData(); }, [activeCareProfile?.id]);
+  const disableNotifications = async () => {
+    const token = await storedPushToken();
+    try { await unregisterPushToken(token); } catch (_) { /* The stored token is still cleared on sign-out. */ }
+    await clearStoredPushToken();
+    await cancelLocalCareNotifications();
+    setNotificationMode("unknown");
+  };
+  useEffect(() => { loadCareData(); }, [activeCareProfile?.id, notificationMode]);
 
   if (!authReady) return <SafeAreaView style={styles.loading}><ActivityIndicator color={colors.blue} size="large" /></SafeAreaView>;
   if (!user) return <AuthenticationScreen onAuthenticated={setUser} />;
@@ -283,6 +379,9 @@ export default function Home() {
   const openAssistant = () => {
     greetingPlayedRef.current = false;
     setAssistantConversationToken(null);
+    setAssistantReply("");
+    setAssistantProposal(null);
+    setAssistantMessages([]);
     setAssistantOpen(true);
   };
   const sendMessage = async (messageToSend = message) => {
@@ -292,16 +391,29 @@ export default function Home() {
     Speech.stop();
     setSpeaking(false);
     setMessage("");
+    setAssistantMessages((messages) => [...messages, { id: nextChatMessageId("member"), role: "member", text: prompt }]);
+    const isFarewell = /(?:^|\s)(bye|goodbye|see you|talk to you later|tata|బై|వీడ్కోలు)(?:\s|$)/i.test(prompt);
+    if (isFarewell) {
+      const farewell = assistantLanguage === "Telugu" ? "సరే, మళ్ళీ మాట్లాడుదాం. జాగ్రత్తగా ఉండండి." : "Goodbye for now. Take care, and I am here whenever you need me.";
+      setAssistantReply(farewell);
+      setAssistantProposal(null);
+      setAssistantConversationToken(null);
+      setAssistantMessages((messages) => [...messages, { id: nextChatMessageId("goldenly"), role: "assistant", text: farewell }]);
+      speakToMemberRef.current?.(farewell, { closeAfter: true });
+      return;
+    }
     setAssistantBusy(true); setAssistantProposal(null);
     try {
       const result = await askCareAgent(prompt, activeCareProfile?.id, assistantConversationToken);
       setAssistantReply(result.reply); setAssistantProposal(result.proposal);
       setAssistantConversationToken(result.conversation_token || null);
+      setAssistantMessages((messages) => [...messages, { id: nextChatMessageId("goldenly"), role: "assistant", text: result.reply }]);
       const spokenReply = result.proposal ? `${result.reply} ${result.proposal.confirmation}` : result.reply;
       speakToMemberRef.current?.(spokenReply, { listenAfter: !result.proposal });
     } catch (error) {
       if (error.code === "SESSION_EXPIRED") return handleExpiredSession();
       setAssistantReply(error.message);
+      setAssistantMessages((messages) => [...messages, { id: nextChatMessageId("goldenly"), role: "assistant", text: error.message }]);
     }
     finally { setAssistantBusy(false); }
   };
@@ -312,6 +424,7 @@ export default function Home() {
     try {
       const result = await confirmCareAction(assistantProposal.confirmation_token, shareLocation, activeCareProfile?.id);
       setAssistantReply(result.message); setAssistantProposal(null); setAssistantConversationToken(null);
+      setAssistantMessages((messages) => [...messages, { id: nextChatMessageId("goldenly"), role: "assistant", text: result.message }]);
       await loadCareData();
       speakToMemberRef.current?.(result.message, { listenAfter: true });
     } catch (error) {
@@ -400,11 +513,41 @@ export default function Home() {
 
   const body = tab === "Today" ? renderToday() : tab === "Help" ? renderHelp() : tab === "My Care" ? renderCare() : renderCircle();
   return <SafeAreaView style={styles.safe}><StatusBar style="dark" />
-    <ScrollView contentContainerStyle={styles.screen}>{<View style={styles.top}><View><Image source={require("../assets/goldenly-app-icon.png")} style={brandingStyles.topLogo} /><Text style={styles.label}>GOLDENLY</Text></View><View><TouchableOpacity onPress={() => setProfilePickerOpen(true)} style={styles.memberBadge}><Text style={styles.memberName}>{activeCareProfile?.full_name || user.full_name}</Text><Text style={styles.memberSub}>{activeCareProfile?.id === user.active_care_profile_id ? "My care" : "Choose care profile"}</Text></TouchableOpacity><TouchableOpacity onPress={async () => { await clearTokens(); setUser(null); }}><Text style={styles.signOutText}>Sign out</Text></TouchableOpacity></View></View>}{body}</ScrollView>
-    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Talk to Goldenly" onPress={openAssistant} style={styles.agentFloater}><Text style={styles.agentFloaterIcon}>✦</Text><Text style={styles.agentFloaterText}>Talk to Goldenly</Text></TouchableOpacity>
+    <ScrollView contentContainerStyle={styles.screen}>{<View style={styles.top}><View><Image source={require("../assets/goldenly-app-icon.png")} style={brandingStyles.topLogo} /><Text style={styles.label}>GOLDENLY</Text></View><View><TouchableOpacity onPress={() => setProfilePickerOpen(true)} style={styles.memberBadge}><Text style={styles.memberName}>{activeCareProfile?.full_name || user.full_name}</Text><Text style={styles.memberSub}>{activeCareProfile?.id === user.active_care_profile_id ? "My care" : "Choose care profile"}</Text></TouchableOpacity><TouchableOpacity onPress={async () => { await disableNotifications(); await clearTokens(); setUser(null); }}><Text style={styles.signOutText}>Sign out</Text></TouchableOpacity></View></View>}{body}</ScrollView>
+    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Talk to Goldenly" onPress={openAssistant} style={styles.agentFloater}><Text style={styles.agentFloaterIcon}>🎙</Text><Text style={styles.agentFloaterText}>Talk to Goldenly</Text></TouchableOpacity>
     <View style={styles.nav}>{[["Today", "⌂"], ["Help", "✦"], ["SOS", "✚"], ["My Care", "♡"], ["My Circle", "♧"]].map(([name, icon]) => <TouchableOpacity key={name} accessibilityRole="button" accessibilityLabel={name} onPress={() => name === "SOS" ? setSosOpen(true) : setTab(name)} style={styles.navItem}><Text style={[styles.navIcon, name === "SOS" && styles.sosIcon]}>{icon}</Text><Text style={[styles.navText, tab === name && styles.activeText, name === "SOS" && styles.sosText]}>{name}</Text></TouchableOpacity>)}</View>
     <ModalSheet visible={Boolean(selectedHelp)} title={selectedHelp?.name || "Request help"} onClose={() => { setServicePickerMode(null); setSelectedHelp(null); }}><Text style={styles.sheetText}>{selectedHelp?.description}</Text><Text style={styles.cardTitle}>Preferred date and time</Text><View style={styles.dateTimeRow}><ActionButton secondary onPress={() => setServicePickerMode("date")}>{serviceDateTime.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</ActionButton><ActionButton secondary onPress={() => setServicePickerMode("time")}>{serviceDateTime.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</ActionButton></View>{servicePickerMode ? <DateTimePicker value={serviceDateTime} mode={servicePickerMode} display="default" onChange={(_event, selected) => { setServicePickerMode(null); if (selected) setServiceDateTime((current) => mergePickerValue(current, selected, servicePickerMode)); }} /> : null}<Text style={styles.cardTitle}>Extra details (optional)</Text><TextInput value={serviceNotes} onChangeText={setServiceNotes} style={styles.input} multiline placeholder="Access needs, preferred provider, or other details" placeholderTextColor={colors.muted} /><Text style={styles.safeNote}>Goldenly will not book or dispatch anyone until you confirm.</Text><ActionButton onPress={confirmHelp}>Confirm request</ActionButton><ActionButton secondary onPress={() => setSelectedHelp(null)}>Not now</ActionButton></ModalSheet>
-    <Modal visible={assistantOpen} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => { Keyboard.dismiss(); setAssistantConversationToken(null); setAssistantOpen(false); }}><SafeAreaView style={styles.chatScreen}><StatusBar style="dark" /><KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}><View style={styles.chatHeader}><View><Text style={styles.chatKicker}>GOLDENLY AI · {activeCareProfile?.full_name || "My care"}</Text><Text style={styles.chatTitle}>Talk to Goldenly</Text></View><TouchableOpacity accessibilityLabel="Close chat" onPress={() => { Keyboard.dismiss(); setAssistantConversationToken(null); setAssistantOpen(false); }} style={styles.chatClose}><Text style={styles.chatCloseText}>×</Text></TouchableOpacity></View><ScrollView contentContainerStyle={styles.chatContent} keyboardShouldPersistTaps="handled"><Text style={styles.chatIntro}>Ask about {activeCareProfile?.full_name || "this person"}’s recorded plan, reminders, services, or support.</Text><View style={styles.languageRow}>{["English", "Telugu"].map((item) => <TouchableOpacity key={item} onPress={() => setAssistantLanguage(item)} style={[styles.languageButton, assistantLanguage === item && styles.languageButtonActive]}><Text style={[styles.languageText, assistantLanguage === item && styles.languageTextActive]}>{item}</Text></TouchableOpacity>)}</View><View style={styles.voiceStatus}><Text style={styles.voiceStatusTitle}>{speaking ? "Goldenly is speaking…" : listening ? "Listening…" : "Voice conversation is ready"}</Text><Text style={styles.detail}>{speaking || listening ? "You can speak naturally when Goldenly finishes." : "Prefer typing? Use the box below."}</Text></View>{assistantReply ? <View style={styles.assistantReply}><Text style={styles.chatReplyLabel}>GOLDENLY</Text><Text style={styles.detail}>{assistantReply}</Text></View> : <View style={styles.chatStarter}><Text style={styles.chatStarterTitle}>How can I help today?</Text><Text style={styles.detail}>For example: “When is my physiotherapy?”</Text></View>}{assistantProposal ? <View style={styles.confirmation}><Text style={styles.confirmationTitle}>{assistantProposal.title}</Text><Text style={styles.detail}>{assistantProposal.confirmation}</Text><ActionButton onPress={confirmAssistantProposal}>{assistantBusy ? "Confirming…" : "Confirm action"}</ActionButton></View> : null}</ScrollView><View style={styles.chatComposer}><TextInput value={message} onFocus={() => { if (listening) ExpoSpeechRecognitionModule.stop(); Speech.stop(); }} onChangeText={setMessage} onSubmitEditing={sendMessage} placeholder="Prefer typing? Write a request…" placeholderTextColor={colors.muted} style={styles.chatInput} accessibilityLabel="Message Goldenly" returnKeyType="send" blurOnSubmit editable={!assistantBusy} /><View style={styles.agentButtons}><ActionButton secondary onPress={toggleListening}>{listening ? "Stop listening" : "Speak"}</ActionButton><ActionButton onPress={sendMessage}>{assistantBusy ? "Checking…" : "Send"}</ActionButton></View><Text style={styles.safeNote}>Goldenly does not provide medical diagnoses, treatment, or dosage changes.</Text></View></KeyboardAvoidingView></SafeAreaView></Modal>
+    <Modal visible={assistantOpen} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => { Keyboard.dismiss(); setAssistantConversationToken(null); setAssistantOpen(false); }}>
+      <SafeAreaView style={styles.chatScreen}><StatusBar style="dark" />
+        <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+          <View style={styles.chatHeader}>
+            <View style={styles.chatAvatar}><Text style={styles.chatAvatarText}>G</Text></View>
+            <View style={styles.flex}><Text style={styles.chatKicker}>GOLDENLY AI</Text><Text style={styles.chatTitle}>Here to help {activeCareProfile?.full_name || "you"}</Text></View>
+            <TouchableOpacity accessibilityLabel="Close chat" onPress={() => { Keyboard.dismiss(); setAssistantConversationToken(null); setAssistantOpen(false); }} style={styles.chatClose}><Text style={styles.chatCloseText}>×</Text></TouchableOpacity>
+          </View>
+          <View style={styles.chatProfileRow}>
+            <Text style={styles.chatProfileText}>Supporting {activeCareProfile?.full_name || "your care profile"}</Text>
+            <View style={styles.languageRow}>{["English", "Telugu"].map((item) => <TouchableOpacity key={item} accessibilityRole="button" onPress={() => setAssistantLanguage(item)} style={[styles.languageButton, assistantLanguage === item && styles.languageButtonActive]}><Text style={[styles.languageText, assistantLanguage === item && styles.languageTextActive]}>{item}</Text></TouchableOpacity>)}</View>
+          </View>
+          <ScrollView ref={chatScrollRef} onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: true })} contentContainerStyle={styles.chatContent} keyboardShouldPersistTaps="handled">
+            {assistantMessages.map((item) => <View key={item.id} style={[styles.chatBubble, item.role === "member" ? styles.memberBubble : styles.goldenlyBubble]}><Text style={[styles.chatBubbleLabel, item.role === "member" && styles.memberBubbleLabel]}>{item.role === "member" ? "YOU" : "GOLDENLY"}</Text><Text style={[styles.chatBubbleText, item.role === "member" && styles.memberBubbleText]}>{item.text}</Text></View>)}
+            {assistantBusy ? <View style={[styles.chatBubble, styles.goldenlyBubble]}><Text style={styles.chatBubbleLabel}>GOLDENLY</Text><Text style={styles.chatTyping}>Thinking…</Text></View> : null}
+            {assistantProposal ? <View style={styles.confirmation}><Text style={styles.confirmationTitle}>{assistantProposal.title}</Text><Text style={styles.detail}>{assistantProposal.confirmation}</Text><ActionButton onPress={confirmAssistantProposal}>{assistantBusy ? "Confirming…" : "Confirm action"}</ActionButton></View> : null}
+          </ScrollView>
+          <View style={styles.voiceStatus}><View style={styles.voiceStatusDot} /><View style={styles.flex}><Text style={styles.voiceStatusTitle}>{speaking ? "Goldenly is speaking" : listening ? "Listening…" : "Voice conversation ready"}</Text><Text style={styles.voiceStatusCopy}>{speaking ? "I will listen when I finish." : listening ? "Speak naturally. I am listening." : "Tap the microphone to talk."}</Text></View></View>
+          <View style={styles.chatComposer}>
+            <View style={styles.chatInputRow}>
+              <TextInput value={message} onFocus={() => { if (listening) ExpoSpeechRecognitionModule.stop(); Speech.stop(); }} onChangeText={setMessage} onSubmitEditing={() => sendMessage()} placeholder="Type a message…" placeholderTextColor={colors.muted} style={styles.chatInput} accessibilityLabel="Message Goldenly" returnKeyType="send" blurOnSubmit editable={!assistantBusy} />
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Send message" disabled={assistantBusy || !message.trim()} onPress={() => sendMessage()} style={[styles.chatSend, (assistantBusy || !message.trim()) && styles.chatSendDisabled]}><Text style={styles.chatSendText}>↑</Text></TouchableOpacity>
+            </View>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={listening ? "Stop listening" : "Start voice conversation"} onPress={toggleListening} style={[styles.microphoneButton, listening && styles.microphoneButtonListening, speaking && styles.microphoneButtonSpeaking]}>
+              <Text style={styles.microphoneIcon}>{listening ? "■" : "🎙"}</Text><Text style={styles.microphoneText}>{listening ? "Tap to stop listening" : speaking ? "Goldenly is speaking" : "Tap to talk"}</Text>
+            </TouchableOpacity>
+            <Text style={styles.safeNote}>Goldenly does not provide medical diagnoses, treatment, or dosage changes.</Text>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </Modal>
     <ModalSheet visible={profilePickerOpen} title="Choose care profile" onClose={() => setProfilePickerOpen(false)}>{careProfiles.map((profile) => <ActionButton key={profile.id} secondary={profile.id !== activeCareProfile?.id} onPress={async () => { const updatedUser = await setActiveCareProfile(profile.id); setUser(updatedUser); setProfilePickerOpen(false); setAssistantReply(""); setAssistantProposal(null); setAssistantConversationToken(null); }}>{profile.id === activeCareProfile?.id ? `${profile.full_name} · selected` : profile.full_name}</ActionButton>)}{careProfiles.length === 0 ? <Text style={styles.detail}>Your care profile will appear here after you sign in again.</Text> : null}</ModalSheet>
     <ModalSheet visible={sosOpen} title="Emergency SOS" onClose={() => { setSosOpen(false); setSosProposal(null); }}><Text style={styles.sheetText}>After confirmation, Goldenly records an alert for your trusted circle. Use the call button for immediate emergency help.</Text><View style={styles.locationRow}><View style={styles.flex}><Text style={styles.cardTitle}>Share my saved location</Text><Text style={styles.detail}>Only if you consent</Text></View><Switch value={shareLocation} onValueChange={setShareLocation} trackColor={{ false: colors.line, true: colors.sky }} /></View><Text style={styles.safeNote}>For immediate danger, call local emergency services first.</Text>{sosProposal ? <><View style={styles.confirmation}><Text style={styles.confirmationTitle}>{sosProposal.title}</Text><Text style={styles.detail}>{sosProposal.confirmation}</Text></View><ActionButton onPress={confirmSos}>{sosBusy ? "Confirming…" : "Confirm emergency alert"}</ActionButton><ActionButton secondary onPress={() => Linking.openURL(`tel:${sosProposal.emergency_number}`)}>Call {sosProposal.emergency_number} now</ActionButton></> : <ActionButton onPress={prepareSos}>{sosBusy ? "Preparing…" : "Continue to confirmation"}</ActionButton>}<ActionButton secondary onPress={() => setSosOpen(false)}>Cancel</ActionButton></ModalSheet>
   </SafeAreaView>;
@@ -423,3 +566,57 @@ const brandingStyles = StyleSheet.create({
 styles.voiceStatus = { padding: 14, borderRadius: 14, backgroundColor: "#e5f5ed" };
 styles.voiceStatusTitle = { color: colors.success, fontSize: 14, fontWeight: "800" };
 styles.signOutText = { color: colors.muted, fontSize: 10, fontWeight: "700", textAlign: "right", marginTop: 4 };
+
+// Voice-first assistant conversation styles.
+styles.chatScreen = { flex: 1, backgroundColor: "#f5f8f7" };
+styles.chatHeader = { flexDirection: "row", alignItems: "center", gap: 11, paddingHorizontal: 20, paddingVertical: 14, backgroundColor: "white", borderBottomWidth: 1, borderColor: "#e5ece8" };
+styles.chatAvatar = { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center", backgroundColor: colors.blue };
+styles.chatAvatarText = { color: "white", fontSize: 20, fontWeight: "900" };
+styles.chatKicker = { color: colors.success, fontSize: 10, fontWeight: "900", letterSpacing: 1.4 };
+styles.chatTitle = { color: colors.ink, fontSize: 17, fontWeight: "800", marginTop: 2 };
+styles.chatClose = { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: "#eef2f0" };
+styles.chatCloseText = { color: colors.muted, fontSize: 27, lineHeight: 29 };
+styles.chatProfileRow = { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: "white", borderBottomWidth: 1, borderColor: "#e5ece8", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 };
+styles.chatProfileText = { flex: 1, color: colors.muted, fontSize: 11, fontWeight: "700" };
+styles.languageRow = { flexDirection: "row", gap: 5 };
+styles.languageButton = { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, backgroundColor: "#edf2f0" };
+styles.languageButtonActive = { backgroundColor: colors.blue };
+styles.languageText = { color: colors.muted, fontSize: 10, fontWeight: "800" };
+styles.languageTextActive = { color: "white" };
+styles.chatContent = { flexGrow: 1, padding: 18, gap: 11, justifyContent: "flex-end" };
+styles.chatBubble = { maxWidth: "84%", paddingHorizontal: 15, paddingVertical: 12, borderRadius: 19 };
+styles.goldenlyBubble = { alignSelf: "flex-start", backgroundColor: "white", borderWidth: 1, borderColor: "#dfe9e4", borderBottomLeftRadius: 5 };
+styles.memberBubble = { alignSelf: "flex-end", backgroundColor: colors.blue, borderBottomRightRadius: 5 };
+styles.chatBubbleLabel = { color: colors.success, fontSize: 9, fontWeight: "900", letterSpacing: 1.1, marginBottom: 4 };
+styles.memberBubbleLabel = { color: "#bcecf8" };
+styles.chatBubbleText = { color: colors.ink, fontSize: 15, lineHeight: 21 };
+styles.memberBubbleText = { color: "white" };
+styles.chatTyping = { color: colors.muted, fontSize: 14, fontStyle: "italic" };
+styles.voiceStatus = { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 18, marginBottom: 10, padding: 12, borderRadius: 14, backgroundColor: "#e3f4eb" };
+styles.voiceStatusDot = { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.success };
+styles.voiceStatusTitle = { color: colors.success, fontSize: 12, fontWeight: "900" };
+styles.voiceStatusCopy = { color: "#537467", fontSize: 11, lineHeight: 15, marginTop: 2 };
+styles.chatComposer = { paddingHorizontal: 18, paddingTop: 12, paddingBottom: 15, borderTopWidth: 1, borderColor: "#e5ece8", backgroundColor: "white", gap: 10 };
+styles.chatInputRow = { flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: colors.line, borderRadius: 17, paddingLeft: 13, backgroundColor: "#fafcfb" };
+styles.chatInput = { flex: 1, minHeight: 47, color: colors.ink, fontSize: 15, paddingVertical: 8 };
+styles.chatSend = { width: 37, height: 37, borderRadius: 19, alignItems: "center", justifyContent: "center", marginRight: 5, backgroundColor: colors.blue };
+styles.chatSendDisabled = { backgroundColor: "#b9c8c5" };
+styles.chatSendText = { color: "white", fontSize: 22, fontWeight: "700", lineHeight: 24 };
+styles.microphoneButton = { alignSelf: "center", minWidth: 180, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 18, paddingVertical: 12, borderRadius: 26, backgroundColor: colors.blue };
+styles.microphoneButtonListening = { backgroundColor: colors.red };
+styles.microphoneButtonSpeaking = { backgroundColor: colors.success };
+styles.microphoneIcon = { color: "white", fontSize: 18 };
+styles.microphoneText = { color: "white", fontSize: 12, fontWeight: "800" };
+styles.addressPicker = { gap: 4 };
+styles.addressSuggestion = { paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: colors.line, borderRadius: 9, backgroundColor: "white" };
+styles.addressSuggestionText = { color: colors.ink, fontSize: 12, lineHeight: 17 };
+styles.googleAttribution = { color: colors.muted, fontSize: 10, fontWeight: "700", textAlign: "right", marginTop: 2 };
+styles.phoneCodeRow = { gap: 7, paddingRight: 12 };
+styles.phoneCode = { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 15, backgroundColor: "#edf2f3" };
+styles.phoneCodeActive = { backgroundColor: colors.blue };
+styles.phoneCodeText = { color: colors.muted, fontSize: 11, fontWeight: "800" };
+styles.phoneCodeTextActive = { color: "white" };
+styles.phoneInputRow = { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: colors.line, borderRadius: 10, backgroundColor: "white", minHeight: 48 };
+styles.phonePrefix = { color: colors.blue, fontSize: 14, fontWeight: "800", paddingHorizontal: 12, borderRightWidth: 1, borderColor: colors.line };
+styles.phoneInput = { flex: 1, color: colors.ink, fontSize: 14, paddingHorizontal: 12, minHeight: 46 };
+styles.authFieldLabel = { color: colors.ink, fontSize: 12, fontWeight: "800", marginTop: 4 };

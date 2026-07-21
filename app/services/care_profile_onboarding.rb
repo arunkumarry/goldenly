@@ -29,7 +29,7 @@ class CareProfileOnboarding
   def profile_attributes(attributes)
     # Web signup data is stored in the session, which returns string keys.
     # Normalise it before applying the same onboarding service used by the API.
-    attributes.to_h.symbolize_keys.slice(:full_name, :phone_number, :preferred_language, :mobility_needs, :emergency_contact_name, :emergency_contact_phone, :country, :location, :accessibility_preferences)
+    attributes.to_h.symbolize_keys.slice(:full_name, :phone_number, :preferred_language, :mobility_needs, :emergency_contact_name, :emergency_contact_phone, :address, :location, :city, :region, :country, :country_code, :postal_code, :latitude, :longitude, :google_place_id, :accessibility_preferences)
   end
 
   def create_link!(profile, relationship:, permissions:)

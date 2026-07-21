@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_21_170000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_22_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -53,21 +53,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_170000) do
 
   create_table "care_profiles", force: :cascade do |t|
     t.jsonb "accessibility_preferences", default: {}, null: false
+    t.string "address"
+    t.string "city"
     t.string "consent_basis"
     t.string "country"
+    t.string "country_code", limit: 2
     t.datetime "created_at", null: false
     t.string "emergency_contact_name"
     t.string "emergency_contact_phone"
     t.string "full_name", null: false
+    t.string "google_place_id"
+    t.decimal "latitude", precision: 10, scale: 6
     t.string "location"
+    t.decimal "longitude", precision: 10, scale: 6
     t.string "mobility_needs"
     t.bigint "owner_user_id"
     t.string "phone_number"
+    t.string "postal_code"
     t.string "preferred_language", default: "English", null: false
+    t.string "region"
     t.string "relationship_to_user", default: "self", null: false
     t.jsonb "sharing_preferences", default: {}, null: false
     t.string "state", default: "unclaimed", null: false
     t.datetime "updated_at", null: false
+    t.index ["google_place_id"], name: "index_care_profiles_on_google_place_id"
     t.index ["owner_user_id"], name: "index_care_profiles_on_owner_user_id"
   end
 
@@ -83,6 +92,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_170000) do
     t.datetime "updated_at", null: false
     t.index ["actor_user_id"], name: "index_consent_records_on_actor_user_id"
     t.index ["care_profile_id"], name: "index_consent_records_on_care_profile_id"
+  end
+
+  create_table "device_push_tokens", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "last_seen_at", null: false
+    t.string "platform", null: false
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["token"], name: "index_device_push_tokens_on_token", unique: true
+    t.index ["user_id", "active"], name: "index_device_push_tokens_on_user_id_and_active"
+    t.index ["user_id"], name: "index_device_push_tokens_on_user_id"
   end
 
   create_table "email_verification_codes", force: :cascade do |t|
@@ -182,16 +204,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_170000) do
   end
 
   create_table "users", force: :cascade do |t|
+    t.string "address"
+    t.string "city"
     t.string "country"
+    t.string "country_code", limit: 2
     t.datetime "created_at", null: false
     t.string "email_address"
     t.string "full_name", null: false
+    t.string "google_place_id"
+    t.decimal "latitude", precision: 10, scale: 6
     t.string "location"
+    t.decimal "longitude", precision: 10, scale: 6
     t.string "password_digest"
     t.string "phone_number"
+    t.string "postal_code"
+    t.string "region"
     t.datetime "updated_at", null: false
     t.datetime "verified_at"
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
+    t.index ["google_place_id"], name: "index_users_on_google_place_id"
     t.index ["phone_number"], name: "index_users_on_phone_number", unique: true
   end
 
@@ -203,6 +234,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_21_170000) do
   add_foreign_key "care_profiles", "users", column: "owner_user_id"
   add_foreign_key "consent_records", "care_profiles"
   add_foreign_key "consent_records", "users", column: "actor_user_id"
+  add_foreign_key "device_push_tokens", "users"
   add_foreign_key "emergency_alerts", "care_profiles"
   add_foreign_key "profile_invitations", "care_profiles"
   add_foreign_key "profile_invitations", "users", column: "invited_by_id"

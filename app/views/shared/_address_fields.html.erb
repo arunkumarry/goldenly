@@ -1,0 +1,18 @@
+<div class="address-fields" data-controller="address-autocomplete">
+  <%= form.label :address, "Street address" %>
+  <%= form.text_field :address, required: true, autocomplete: "street-address", placeholder: "Start typing an address", data: { address_autocomplete_target: "input", action: "input->address-autocomplete#search" } %>
+  <div class="address-results" data-address-autocomplete-target="results"></div>
+  <%= form.label :location, "City" %>
+  <%= form.text_field :city, value: form.object.city.presence || form.object.location, required: true, autocomplete: "address-level2", data: { address_autocomplete_target: "city" } %>
+  <%= form.hidden_field :location, data: { address_autocomplete_target: "location" } %>
+  <%= form.label :region, "State, province, or region" %>
+  <%= form.text_field :region, autocomplete: "address-level1", data: { address_autocomplete_target: "region" } %>
+  <%= form.label :country, "Country" %>
+  <%= form.text_field :country, required: true, autocomplete: "country-name", data: { address_autocomplete_target: "country" } %>
+  <%= form.label :postal_code, "Postal code" %>
+  <%= form.text_field :postal_code, autocomplete: "postal-code", data: { address_autocomplete_target: "postalCode" } %>
+  <%= form.hidden_field :country_code, data: { address_autocomplete_target: "countryCode" } %>
+  <%= form.hidden_field :google_place_id, data: { address_autocomplete_target: "placeId" } %>
+  <%= form.hidden_field :latitude, data: { address_autocomplete_target: "latitude" } %>
+  <%= form.hidden_field :longitude, data: { address_autocomplete_target: "longitude" } %>
+</div>

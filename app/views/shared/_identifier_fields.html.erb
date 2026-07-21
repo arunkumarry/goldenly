@@ -1,0 +1,26 @@
+<fieldset class="identifier-fields">
+  <legend>Verify with</legend>
+  <div class="identifier-toggle" role="group" aria-label="Verification method">
+    <button type="button" data-identifier-target="emailButton" data-action="identifier#selectEmail">Email</button>
+    <button type="button" data-identifier-target="phoneButton" data-action="identifier#selectPhone">Phone number</button>
+  </div>
+  <div data-identifier-target="email">
+    <label for="identifier_email">Email address</label>
+    <input id="identifier_email" type="email" autocomplete="email" placeholder="you@example.com" data-identifier-target="emailInput">
+  </div>
+  <div data-identifier-target="phone" hidden>
+    <label for="identifier_phone">Phone number</label>
+    <div class="phone-number-input">
+      <select aria-label="Country calling code" data-identifier-target="dialCode">
+        <option value="+91">India +91</option>
+        <option value="+1">United States / Canada +1</option>
+        <option value="+44">United Kingdom +44</option>
+        <option value="+61">Australia +61</option>
+        <option value="+65">Singapore +65</option>
+        <option value="+971">United Arab Emirates +971</option>
+      </select>
+      <input id="identifier_phone" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="Phone number" data-identifier-target="phoneInput">
+    </div>
+  </div>
+  <input type="hidden" name="identifier" data-identifier-target="identifier">
+</fieldset>

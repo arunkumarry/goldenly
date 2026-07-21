@@ -5,9 +5,9 @@
     <p class="eyebrow">WELCOME BACK</p>
     <h1>Sign in</h1>
     <p class="workflow-intro">Use your email address or phone number to receive a secure sign-in code.</p>
-    <%= form_with url: session_path, class: "workflow-form" do |form| %>
+    <%= form_with url: session_path, class: "workflow-form", data: { controller: "identifier", action: "submit->identifier#prepare" } do |form| %>
       <div class="form-grid">
-        <%= form.label :identifier, "Email address or phone number" %><%= form.text_field :identifier, required: true, autocomplete: "username", placeholder: "you@example.com or +14155552671" %>
+        <%= render "shared/identifier_fields" %>
       </div>
       <%= form.submit "Send sign-in code", class: "primary-button" %>
     <% end %>

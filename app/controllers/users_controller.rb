@@ -60,7 +60,7 @@ class UsersController < ApplicationController
     session.delete(:pending_signup)
     session[:user_id] = @user.id
     session[:care_profile_id] = @care_profile.id
-    redirect_to root_path, notice: "Welcome to Goldenly, #{@user.full_name}!"
+    redirect_to dashboard_path, notice: "Welcome to Goldenly, #{@user.full_name}!"
   rescue ActiveRecord::RecordInvalid, EmailOtp::DeliveryError, TwilioVerify::ConfigurationError, Twilio::REST::RestError => error
     flash.now[:alert] = error.message
     render :verify, status: :unprocessable_content
@@ -69,11 +69,15 @@ class UsersController < ApplicationController
   private
 
   def user_params
-    params.require(:user).permit(:full_name, :country, :location)
+    params.require(:user).permit(*place_fields, :full_name)
   end
 
   def care_profile_params
-    params.require(:care_profile).permit(:full_name, :phone_number, :preferred_language, :country, :location)
+    params.require(:care_profile).permit(*place_fields, :full_name, :phone_number, :preferred_language)
+  end
+
+  def place_fields
+    %i[address location city region country country_code postal_code latitude longitude google_place_id]
   end
 
   def pending_signup

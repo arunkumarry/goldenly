@@ -1,4 +1,4 @@
 class ApplicationMailer < ActionMailer::Base
-  default from: "Goldenly <no-reply@goldenly.local>"
+  default from: ENV.fetch("EMAIL_FROM", "Goldenly <no-reply@goldenly.local>")
   layout "mailer"
 end

@@ -1,0 +1,6 @@
+<% content_for :title, "Goldenly Provider Platform" %>
+
+<main class="landing-page provider-preview">
+  <header class="landing-nav"><%= link_to root_path, class: "landing-brand" do %><%= image_tag "goldenly-logo.png", alt: "", class: "landing-logo" %><span>Goldenly</span><% end %><div class="landing-nav-actions"><%= link_to "Back to home", root_path, class: "landing-login" %><%= link_to "Member sign up", new_user_path, class: "landing-button landing-button-small" %></div></header>
+  <section class="provider-preview-hero"><p class="landing-kicker"><span></span> Goldenly provider platform</p><h1>Care teams will soon have a clearer way to respond.</h1><p>We are building the provider platform next: a focused workspace for receiving member requests, responding with availability, and keeping families informed.</p><div class="provider-preview-list"><span>Request intake</span><span>Provider availability</span><span>Care-status updates</span></div><%= link_to "Return to Goldenly", root_path, class: "landing-button" %></section>
+</main>

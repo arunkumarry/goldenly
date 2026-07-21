@@ -9,14 +9,14 @@
         <h1>Hello, <%= current_user.full_name.split.first %> <span aria-hidden="true">☀</span></h1>
         <p class="active-profile-banner"><%= coordinator_mode? ? "Viewing #{@care_profile.full_name}’s care. Your actions apply only to this profile." : "Viewing your care." %></p>
       </div>
-      <div class="top-actions"><%= link_to "View calendar", calendar_path, class: "outline-button" %><div class="avatar"><%= current_user.full_name.first %></div></div>
+      <div class="top-actions"><div class="avatar"><%= current_user.full_name.first %></div></div>
     </header>
 
     <section class="hero-card">
       <div class="hero-copy">
         <span class="hero-kicker">Your care, at a glance</span>
         <h2><%= @today_reminders.any? ? "Your plan is ready for today." : "Start building your care plan." %></h2>
-        <p><%= @today_reminders.any? ? "#{@today_reminders.count} reminder#{'s' if @today_reminders.count != 1} scheduled today." : "Add a reminder, request a service, or ask Goldenly for help." %></p>
+        <p><%= @today_reminders.any? ? "#{@today_reminders.count} reminder#{'s' if @today_reminders.count != 1} scheduled today." : "Add a reminder or request a service to begin." %></p>
         <%= link_to "Open calendar →", calendar_path, class: "text-link" %>
       </div>
       <div class="hero-art" aria-hidden="true"><div class="sun"></div><div class="plant"><i></i><i></i><i></i></div><div class="care-figure">♡</div></div>
@@ -35,6 +35,9 @@
         <div class="schedule-list">
           <% @reminders.each_with_index do |reminder, index| %><%= render "reminders/reminder", reminder: reminder, index: index %><% end %>
           <% if @reminders.empty? %><p class="empty-state">No reminders yet. <%= link_to "Create the first reminder", new_reminder_path %>.</p><% end %>
+          <div class="request-list-heading"><p class="eyebrow">SERVICE REQUESTS</p><h3>Recent requests</h3></div>
+          <% @service_requests.each do |service_request| %><article class="schedule-item"><time><%= service_request.preferred_time ? service_request.preferred_time.strftime("%-d %b") : "Flexible" %></time><span class="timeline-dot"></span><div><strong><%= service_request.service_type %></strong><small><%= service_request.status.humanize %></small></div></article><% end %>
+          <% if @service_requests.empty? %><p class="empty-state">No service requests yet. <%= link_to "Request support", new_service_request_path %>.</p><% end %>
         </div>
       </section>
 
@@ -42,22 +45,7 @@
         <section class="panel quick-actions">
           <div class="panel-heading"><div><p class="eyebrow">QUICK ACTIONS</p><h2>What do you need?</h2></div></div>
           <%= link_to new_service_request_path do %>✦ <span>Request a service</span><b>→</b><% end %>
-          <button type="button" data-agent-open>◉ <span>Talk to Goldenly</span><b>→</b></button>
           <%= link_to edit_care_profile_path(@care_profile) do %>▤ <span>Edit care profile</span><b>→</b><% end %>
-        </section>
-        <section class="assistant-card" id="assistant" data-care-agent data-message-url="<%= assistant_messages_path %>" data-confirm-url="<%= confirm_assistant_action_path %>">
-          <div class="assistant-orb">✦</div><div><p>Goldenly AI</p><strong>“How can I help today?”</strong></div>
-          <button type="button" class="outline-button" data-agent-open>Talk now</button>
-          <dialog class="agent-dialog" aria-label="Talk to Goldenly">
-            <div class="agent-dialog-header"><div><p class="eyebrow">GOLDENLY VOICE ASSISTANT</p><h2>How can I help?</h2></div><button type="button" class="dialog-close" data-agent-close aria-label="Close">×</button></div>
-            <p class="agent-intro">Ask about this person’s recorded care plan, reminders, services, or urgent help. English and Telugu are supported.</p>
-            <label class="agent-label" for="agent-language">Language</label><select id="agent-language" data-agent-language><option>English</option><option>Telugu</option></select>
-            <label class="agent-label" for="agent-message">What do you need?</label><textarea id="agent-message" data-agent-input placeholder="For example: when is my next reminder?"></textarea>
-            <div class="agent-actions"><button type="button" class="agent-secondary" data-agent-microphone>Speak</button><button type="button" class="agent-primary" data-agent-submit>Ask Goldenly</button></div>
-            <p class="agent-reply" data-agent-reply hidden aria-live="polite"></p>
-            <section class="agent-proposal" data-agent-proposal hidden aria-live="polite"><strong data-proposal-title></strong><p data-proposal-summary></p><p data-proposal-confirmation></p><label class="agent-location"><input type="checkbox" data-agent-share-location> Include my saved location with an emergency alert</label><button type="button" class="agent-primary" data-agent-confirm>Confirm action</button></section>
-            <p class="agent-safety">Goldenly does not diagnose, prescribe, or change medication. For immediate danger, call local emergency services.</p>
-          </dialog>
         </section>
       </aside>
     </div>

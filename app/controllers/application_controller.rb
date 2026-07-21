@@ -13,7 +13,7 @@ class ApplicationController < ActionController::Base
 
   def navigation_items
     [
-      [ "Home", root_path, "⌂" ],
+      [ "Home", dashboard_path, "⌂" ],
       [ "Care timeline", care_timeline_path, "◷" ],
       [ "Calendar", calendar_path, "▦" ],
       [ "Care plan", new_reminder_path, "▣" ],
@@ -58,7 +58,7 @@ class ApplicationController < ActionController::Base
     CareProfileAuthorization.new(current_user, current_care_profile).authorize!(permission, capability, emergency: emergency)
   rescue CareProfileAuthorization::NotAuthorized => error
     respond_to do |format|
-      format.html { redirect_to root_path, alert: error.message }
+      format.html { redirect_to dashboard_path, alert: error.message }
       format.json { render json: { error: error.message }, status: :forbidden }
     end
   end

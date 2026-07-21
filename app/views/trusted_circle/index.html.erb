@@ -1,6 +1,6 @@
 <% content_for :title, "Trusted circle · Goldenly" %>
 <main class="dashboard"><%= render "shared/sidebar" %><section class="content"><div class="workflow-page">
-  <%= link_to "← Back to dashboard", root_path, class: "back-link" %>
+  <%= link_to "← Back to dashboard", dashboard_path, class: "back-link" %>
   <section class="workflow-card">
     <p class="eyebrow">PROFILE INVITATIONS</p>
     <h1>Invite someone to their care profile</h1>
@@ -12,7 +12,7 @@
           <%= form.label :care_profile_id, "Care profile" %>
           <%= form.select :care_profile_id, options_for_select(@claimable_profiles.map { |link| [link.care_profile.full_name, link.care_profile.id, { data: { contact: link.care_profile.phone_number } }] }, @invitation.care_profile_id), {}, data: { invitation_target: "profile", action: "change->invitation#updateContact" } %>
           <%= form.label :contact_identifier, "Phone number or email" %>
-          <%= form.text_field :contact_identifier, required: true, placeholder: "+14155552671 or person@example.com", data: { invitation_target: "contact" } %>
+          <div class="phone-number-input"><%= select_tag :invitation_country_code, options_for_select(ApplicationHelper::CALLING_CODES, "+91"), aria: { label: "Country calling code" }, data: { invitation_target: "dialCode", action: "change->invitation#addDialCode" } %><%= form.text_field :contact_identifier, required: true, placeholder: "Phone number or person@example.com", data: { invitation_target: "contact", action: "input->invitation#addDialCode" } %></div>
           <%= form.label :delivery_channel, "Send by" %>
           <%= form.select :delivery_channel, [["SMS", "sms"], ["Email", "email"], ["WhatsApp", "whatsapp"]] %>
         </div>

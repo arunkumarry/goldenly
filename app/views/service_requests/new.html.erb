@@ -1,6 +1,6 @@
 <% content_for :title, "Request a service · Goldenly" %>
 <main class="dashboard"><%= render "shared/sidebar" %><section class="content"><div class="workflow-page">
-  <%= link_to "← Back to dashboard", root_path, class: "back-link" %>
+  <%= link_to "← Back to dashboard", dashboard_path, class: "back-link" %>
   <section class="workflow-card">
     <p class="eyebrow">SERVICES</p>
     <h1>Request support</h1>
@@ -9,7 +9,8 @@
     <%= form_with model: @service_request, class: "workflow-form" do |form| %>
       <div class="form-grid">
         <%= form.label :service_catalog_id, "Service needed" %><%= form.collection_select :service_catalog_id, ServiceCatalog.available, :id, :name, { prompt: "Choose a service" }, required: true %>
-        <%= form.label :preferred_time, "Preferred time" %><%= form.datetime_local_field :preferred_time %>
+        <%= label_tag :preferred_date, "Preferred date" %><%= date_field_tag :preferred_date, @service_request.preferred_time&.to_date %>
+        <%= label_tag :preferred_hour, "Preferred hour" %><%= select_tag :preferred_hour, options_for_select(hour_options, @service_request.preferred_time&.hour), include_blank: "Choose an hour" %>
         <%= form.label :notes, "Helpful notes" %><%= form.text_area :notes, rows: 4, placeholder: "Access needs, preferred provider, or other details" %>
       </div>
       <%= form.submit "Save request for confirmation", class: "primary-button" %>

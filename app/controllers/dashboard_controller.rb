@@ -19,7 +19,7 @@ class DashboardController < ApplicationController
     @care_profile = current_care_profile
     @calendar_month = parse_calendar_month
     range = @calendar_month.beginning_of_month.beginning_of_week..@calendar_month.end_of_month.end_of_week
-    @calendar_events = @care_profile.reminders.where(scheduled_for: range).order(:scheduled_for).group_by { |reminder| reminder.scheduled_for.to_date }
+    @calendar_events = reminders_for_calendar(range)
     @service_events = @care_profile.service_requests.where(preferred_time: range).order(:preferred_time).group_by { |request| request.preferred_time.to_date }
   end
 
@@ -52,5 +52,29 @@ class DashboardController < ApplicationController
     Date.strptime(params[:month].to_s, "%Y-%m")
   rescue Date::Error
     Time.zone.today.beginning_of_month
+  end
+
+  def reminders_for_calendar(range)
+    events = Hash.new { |hash, key| hash[key] = [] }
+    @care_profile.reminders.order(:scheduled_for).find_each do |reminder|
+      reminder_occurrence_dates(reminder, range).each { |date| events[date] << reminder }
+    end
+    events
+  end
+
+  def reminder_occurrence_dates(reminder, range)
+    start_date = reminder.scheduled_for.to_date
+    return [ start_date ] if reminder.recurrence.blank? || reminder.recurrence == "once"
+
+    first_date = [ start_date, range.begin.to_date ].max
+    case reminder.recurrence
+    when "daily"
+      (first_date..range.end.to_date).to_a
+    when "weekly"
+      first_date += (start_date.wday - first_date.wday) % 7
+      first_date > range.end.to_date ? [] : (first_date..range.end.to_date).select { |date| date.wday == start_date.wday }
+    else
+      [ start_date ]
+    end
   end
 end

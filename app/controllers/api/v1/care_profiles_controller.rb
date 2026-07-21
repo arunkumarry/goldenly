@@ -21,10 +21,10 @@ class Api::V1::CareProfilesController < ActionController::API
   private
 
   def care_profile_params
-    params.require(:care_profile).permit(:full_name, :phone_number, :preferred_language, :country, :location, :mobility_needs, accessibility_preferences: %i[text_size high_contrast voice_guidance])
+    params.require(:care_profile).permit(:full_name, :phone_number, :preferred_language, :address, :location, :city, :region, :country, :country_code, :postal_code, :latitude, :longitude, :google_place_id, :mobility_needs, accessibility_preferences: %i[text_size high_contrast voice_guidance])
   end
 
   def care_profile_payload(link)
-    link.care_profile.slice(:id, :full_name, :state, :preferred_language, :country, :location).merge("relationship_to_person" => link.relationship_to_person, "permissions" => link.permissions)
+    link.care_profile.slice(:id, :full_name, :state, :preferred_language, :address, :location, :city, :region, :country, :country_code, :postal_code, :latitude, :longitude, :google_place_id).merge("relationship_to_person" => link.relationship_to_person, "permissions" => link.permissions)
   end
 end

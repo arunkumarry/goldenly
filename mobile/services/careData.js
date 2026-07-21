@@ -31,3 +31,16 @@ async function request(path, options, careProfileId) {
 
 export const fetchDashboard = (careProfileId) => request("/api/v1/dashboard", { method: "GET" }, careProfileId);
 export const createServiceRequest = (attributes, careProfileId) => request("/api/v1/service_requests", { method: "POST", body: JSON.stringify(attributes) }, careProfileId);
+export const registerPushToken = (token, platform) => request("/api/v1/push_token", { method: "POST", body: JSON.stringify({ token, platform }) });
+
+export async function unregisterPushToken(token) {
+  if (!token || !apiUrl) return;
+
+  let response = await send("/api/v1/push_token", { method: "DELETE", body: JSON.stringify({ token }) });
+  if (response.status === 401) {
+    const refreshResult = await refreshSession();
+    if (!refreshResult.refreshed) return;
+    response = await send("/api/v1/push_token", { method: "DELETE", body: JSON.stringify({ token }) });
+  }
+  if (!response.ok && response.status !== 204) throw new Error("Goldenly could not turn off push notifications.");
+}

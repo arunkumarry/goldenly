@@ -9,7 +9,7 @@ class CareProfilesController < ApplicationController
     @care_profile = build_care_profile
     if @care_profile
       session[:care_profile_id] = @care_profile.id
-      redirect_to root_path, notice: "#{@care_profile.full_name}'s care profile is ready."
+      redirect_to dashboard_path, notice: "#{@care_profile.full_name}'s care profile is ready."
     else
       @care_profile = CareProfile.new(care_profile_params)
       render :new, status: :unprocessable_content
@@ -27,7 +27,7 @@ class CareProfilesController < ApplicationController
     authorize_profile_management!
     if @care_profile.update(care_profile_params)
       AuditTrail.record!(action: "care_profile.updated", actor: current_user, care_profile: @care_profile)
-      redirect_to root_path, notice: "Care profile updated."
+      redirect_to dashboard_path, notice: "Care profile updated."
     else
       render :edit, status: :unprocessable_content
     end
@@ -61,6 +61,6 @@ class CareProfilesController < ApplicationController
   end
 
   def care_profile_params
-    params.require(:care_profile).permit(:full_name, :phone_number, :preferred_language, :mobility_needs, :emergency_contact_name, :emergency_contact_phone, :country, :location, accessibility_preferences: %i[text_size high_contrast voice_guidance])
+    params.require(:care_profile).permit(:full_name, :phone_number, :preferred_language, :mobility_needs, :emergency_contact_name, :emergency_contact_phone, :address, :location, :city, :region, :country, :country_code, :postal_code, :latitude, :longitude, :google_place_id, accessibility_preferences: %i[text_size high_contrast voice_guidance])
   end
 end

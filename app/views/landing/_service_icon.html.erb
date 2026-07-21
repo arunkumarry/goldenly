@@ -1,0 +1,16 @@
+<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+  <% case icon %>
+  <% when :health %>
+    <path d="M12 21s-7-4.4-7-10.1C5 8.2 6.8 7 8.8 7c1.5 0 2.6.8 3.2 1.8C12.6 7.8 13.7 7 15.2 7 17.2 7 19 8.2 19 10.9 19 16.6 12 21 12 21Z"/><path d="M12 10v5M9.5 12.5h5"/>
+  <% when :diagnostic %>
+    <rect x="6" y="3" width="12" height="18" rx="2"/><path d="M9 3.5h6v3H9zM9 11h6M9 15h4"/>
+  <% when :household %>
+    <path d="m3 11 9-7 9 7"/><path d="M5.5 10v9h13v-9M10 19v-5h4v5"/>
+  <% when :companion %>
+    <circle cx="9" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.4"/><path d="M3.5 20c.5-3.5 2.4-5.3 5.5-5.3s5 1.8 5.5 5.3M14 15.5c3 0 4.8 1.5 5.2 4.5"/>
+  <% when :shopping %>
+    <path d="M5 8h14l-1 12H6L5 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/>
+  <% when :digital %>
+    <rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>
+  <% end %>
+</svg>

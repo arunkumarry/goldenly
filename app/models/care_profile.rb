@@ -1,4 +1,6 @@
 class CareProfile < ApplicationRecord
+  include StructuredPlace
+
   belongs_to :owner, class_name: "User", foreign_key: :owner_user_id, optional: true
 
   has_many :care_profile_links, dependent: :destroy

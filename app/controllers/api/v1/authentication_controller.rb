@@ -51,20 +51,20 @@ class Api::V1::AuthenticationController < ActionController::API
   private
 
   def user_params
-    params.require(:user).permit(:full_name, :country, :location)
+    params.require(:user).permit(:full_name, :address, :location, :city, :region, :country, :country_code, :postal_code, :latitude, :longitude, :google_place_id)
   end
 
   def care_profile_params
-    (params[:care_profile] || params.require(:member)).permit(:full_name, :phone_number, :preferred_language, :country, :location)
+    (params[:care_profile] || params.require(:member)).permit(:full_name, :phone_number, :preferred_language, :address, :location, :city, :region, :country, :country_code, :postal_code, :latitude, :longitude, :google_place_id)
   end
 
   def user_payload(user)
-    user.slice(:id, :full_name, :email_address, :phone_number, :country, :location, :verified_at)
+    user.slice(:id, :full_name, :email_address, :phone_number, :address, :location, :city, :region, :country, :country_code, :postal_code, :latitude, :longitude, :google_place_id, :verified_at)
   end
 
   def care_profiles_payload(user)
     user.active_care_profile_links.map do |link|
-      link.care_profile.slice(:id, :full_name, :preferred_language, :state, :country, :location).merge("relationship_to_person" => link.relationship_to_person, "permissions" => link.permissions)
+      link.care_profile.slice(:id, :full_name, :preferred_language, :state, :address, :location, :city, :region, :country, :country_code, :postal_code, :latitude, :longitude, :google_place_id).merge("relationship_to_person" => link.relationship_to_person, "permissions" => link.permissions)
     end
   end
 

@@ -1,5 +1,7 @@
 Rails.application.routes.draw do
-  root "dashboard#index"
+  root "landing#index"
+  get "dashboard", to: "dashboard#index", as: :dashboard
+  get "provider-platform", to: "landing#provider", as: :provider_platform
   resource :session, only: %i[new create destroy] do
     get :verify
     post :verify, to: "sessions#confirm"
@@ -15,8 +17,8 @@ Rails.application.routes.draw do
   get "care-timeline", to: "dashboard#timeline", as: :care_timeline
   get "calendar", to: "dashboard#calendar", as: :calendar
   get "services", to: "dashboard#services", as: :services
-  post "assistant/messages", to: "assistant_messages#create", as: :assistant_messages
-  post "assistant/actions/confirm", to: "assistant_messages#confirm", as: :confirm_assistant_action
+  get "places/autocomplete", to: "places#autocomplete", as: :places_autocomplete
+  get "places/:place_id", to: "places#show", as: :place
   resources :care_profiles, only: %i[new create edit update]
   resources :reminders, only: %i[new create update]
   resources :service_requests, only: %i[new create update]
@@ -33,6 +35,7 @@ Rails.application.routes.draw do
       post "auth/sign-in", to: "authentication#sign_in"
       post "auth/sign-up", to: "authentication#sign_up"
       post "auth/refresh", to: "authentication#refresh"
+      resource :push_token, only: %i[create destroy]
       resources :care_profiles, only: %i[index create]
       post "care-agent/messages", to: "care_agent#message"
       post "care-agent/actions/confirm", to: "care_agent#confirm"
