@@ -24,6 +24,28 @@ export async function saveSession(user, tokens) {
   await SecureStore.setItemAsync("goldenly_user", JSON.stringify(user));
 }
 
+export async function refreshSession() {
+  const refreshToken = await SecureStore.getItemAsync("goldenly_refresh_token");
+  if (!apiUrl || !refreshToken) return { refreshed: false, expired: true };
+
+  try {
+    const response = await fetch(`${apiUrl}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken })
+    });
+    const payload = await response.json();
+    if (response.status === 401 || response.status === 403) return { refreshed: false, expired: true };
+    if (!response.ok || !payload.tokens?.access_token || !payload.tokens?.refresh_token) return { refreshed: false, expired: false };
+
+    await SecureStore.setItemAsync("goldenly_access_token", payload.tokens.access_token);
+    await SecureStore.setItemAsync("goldenly_refresh_token", payload.tokens.refresh_token);
+    return { refreshed: true, expired: false };
+  } catch (error) {
+    return { refreshed: false, expired: false };
+  }
+}
+
 export async function getSession() {
   const user = await SecureStore.getItemAsync("goldenly_user");
   return user ? JSON.parse(user) : null;

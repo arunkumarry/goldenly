@@ -1,6 +1,8 @@
 class MobileTokenIssuer
-  ACCESS_TOKEN_TTL = 15.minutes
-  REFRESH_TOKEN_TTL = 30.days
+  # Access tokens are short enough to limit exposure while refresh tokens keep
+  # a trusted mobile installation signed in without frequent OTP prompts.
+  ACCESS_TOKEN_TTL = 24.hours
+  REFRESH_TOKEN_TTL = 90.days
 
   def initialize(user)
     @user = user

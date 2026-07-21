@@ -246,6 +246,13 @@ export default function Home() {
   const pendingCount = tasks.filter((task) => !task.done).length;
 
   const completeTask = (id) => setTasks(tasks.map((task) => task.id === id ? { ...task, done: true } : task));
+  const handleExpiredSession = async () => {
+    await clearTokens();
+    setAssistantOpen(false);
+    setAssistantProposal(null);
+    setUser(null);
+    Alert.alert("Session ended", "Please sign in again to continue.");
+  };
   const openAssistant = () => {
     greetingPlayedRef.current = false;
     setAssistantOpen(true);
@@ -263,7 +270,10 @@ export default function Home() {
       setAssistantReply(result.reply); setAssistantProposal(result.proposal);
       const spokenReply = result.proposal ? `${result.reply} ${result.proposal.confirmation}` : result.reply;
       speakToMemberRef.current?.(spokenReply, { listenAfter: !result.proposal });
-    } catch (error) { setAssistantReply(error.message); }
+    } catch (error) {
+      if (error.code === "SESSION_EXPIRED") return handleExpiredSession();
+      setAssistantReply(error.message);
+    }
     finally { setAssistantBusy(false); }
   };
   sendMessageRef.current = sendMessage;
@@ -274,7 +284,10 @@ export default function Home() {
       const result = await confirmCareAction(assistantProposal.confirmation_token, shareLocation);
       setAssistantReply(result.message); setAssistantProposal(null);
       speakToMemberRef.current?.(result.message, { listenAfter: true });
-    } catch (error) { setAssistantReply(error.message); }
+    } catch (error) {
+      if (error.code === "SESSION_EXPIRED") return handleExpiredSession();
+      setAssistantReply(error.message);
+    }
     finally { setAssistantBusy(false); }
   };
   confirmAssistantProposalRef.current = confirmAssistantProposal;
@@ -291,7 +304,10 @@ export default function Home() {
   const prepareSos = async () => {
     setSosBusy(true);
     try { const result = await askCareAgent("SOS emergency help"); setSosProposal(result.proposal); }
-    catch (error) { Alert.alert("Emergency help", error.message); }
+    catch (error) {
+      if (error.code === "SESSION_EXPIRED") return handleExpiredSession();
+      Alert.alert("Emergency help", error.message);
+    }
     finally { setSosBusy(false); }
   };
   const confirmSos = async () => {
@@ -301,7 +317,10 @@ export default function Home() {
       const result = await confirmCareAction(sosProposal.confirmation_token, shareLocation);
       setSosProposal(null); setSosOpen(false);
       Alert.alert("Emergency alert recorded", result.message, result.emergency_call_url ? [{ text: "Call emergency services", onPress: () => Linking.openURL(result.emergency_call_url) }, { text: "Close" }] : undefined);
-    } catch (error) { Alert.alert("Emergency help", error.message); }
+    } catch (error) {
+      if (error.code === "SESSION_EXPIRED") return handleExpiredSession();
+      Alert.alert("Emergency help", error.message);
+    }
     finally { setSosBusy(false); }
   };
   const callPhone = (phone) => Linking.openURL(`tel:${phone.replace(/[^+\d]/g, "")}`);
