@@ -7,14 +7,27 @@
     <p class="workflow-intro">Choose a person you coordinate, select how to deliver the invitation, and let them claim their own Goldenly profile.</p>
 
     <% if @claimable_profiles.any? %>
-      <%= form_with model: @invitation, class: "workflow-form", data: { controller: "invitation" } do |form| %>
+      <%= form_with model: @invitation, class: "workflow-form", data: { controller: "invitation", action: "submit->invitation#prepare" } do |form| %>
         <div class="form-grid">
           <%= form.label :care_profile_id, "Care profile" %>
           <%= form.select :care_profile_id, options_for_select(@claimable_profiles.map { |link| [link.care_profile.full_name, link.care_profile.id, { data: { contact: link.care_profile.phone_number } }] }, @invitation.care_profile_id), {}, data: { invitation_target: "profile", action: "change->invitation#updateContact" } %>
-          <%= form.label :contact_identifier, "Phone number or email" %>
-          <div class="phone-number-input"><%= select_tag :invitation_country_code, options_for_select(ApplicationHelper::CALLING_CODES, "+91"), aria: { label: "Country calling code" }, data: { invitation_target: "dialCode", action: "change->invitation#addDialCode" } %><%= form.text_field :contact_identifier, required: true, placeholder: "Phone number or person@example.com", data: { invitation_target: "contact", action: "input->invitation#addDialCode" } %></div>
           <%= form.label :delivery_channel, "Send by" %>
-          <%= form.select :delivery_channel, [["SMS", "sms"], ["Email", "email"], ["WhatsApp", "whatsapp"]] %>
+          <%= form.select :delivery_channel, [["SMS", "sms"], ["Email", "email"], ["WhatsApp", "whatsapp"]], {}, data: { invitation_target: "deliveryChannel", action: "change->invitation#updateDeliveryChannel" } %>
+
+          <%= form.hidden_field :contact_identifier, data: { invitation_target: "identifier" } %>
+
+          <fieldset class="identifier-fields" data-invitation-target="email" hidden>
+            <%= label_tag :invitation_email, "Email address" %>
+            <%= email_field_tag :invitation_email, nil, id: "invitation_email", placeholder: "person@example.com", autocomplete: "email", data: { invitation_target: "emailInput" } %>
+          </fieldset>
+
+          <fieldset class="identifier-fields" data-invitation-target="phone">
+            <%= label_tag :invitation_phone, "Phone number" %>
+            <div class="phone-number-input">
+              <%= select_tag :invitation_country_code, options_for_select(ApplicationHelper::CALLING_CODES, "+91"), aria: { label: "Country calling code" }, data: { invitation_target: "dialCode" } %>
+              <%= telephone_field_tag :invitation_phone, @invitation.contact_identifier, id: "invitation_phone", placeholder: "7780497748", autocomplete: "tel", data: { invitation_target: "phoneInput" } %>
+            </div>
+          </fieldset>
         </div>
         <%= form.submit "Send profile invitation", class: "primary-button" %>
       <% end %>

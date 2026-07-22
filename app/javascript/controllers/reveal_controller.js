@@ -27,4 +27,4 @@ export default class extends Controller {
   revealAll() {
     this.itemTargets.forEach((item) => item.classList.add("is-visible"))
   }
-end
+}

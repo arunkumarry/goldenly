@@ -56,17 +56,28 @@ Rails.application.configure do
 
   # Brevo delivers production email OTPs and trusted-circle invitations. Keep the
   # credentials in Secret Manager and expose them to Cloud Run as environment variables.
-  app_url = ENV.fetch("APP_URL")
+  # Assets are compiled while the Docker image is built, before Cloud Run injects
+  # those variables. Permit harmless placeholders only for that build-time task.
+  build_time_asset_precompile = ENV["SECRET_KEY_BASE_DUMMY"].present?
+  required_runtime_env = lambda do |key, build_time_default|
+    ENV.fetch(key) do
+      raise KeyError, "key not found: #{key.inspect}" unless build_time_asset_precompile
+
+      build_time_default
+    end
+  end
+
+  app_url = required_runtime_env.call("APP_URL", "https://goldenly.invalid")
   app_uri = URI.parse(app_url)
 
   config.action_mailer.delivery_method = :smtp
   config.action_mailer.raise_delivery_errors = true
   config.action_mailer.smtp_settings = {
-    address: ENV.fetch("SMTP_HOST"),
+    address: required_runtime_env.call("SMTP_HOST", "localhost"),
     port: ENV.fetch("SMTP_PORT", "587").to_i,
     domain: ENV.fetch("SMTP_DOMAIN", app_uri.host),
-    user_name: ENV.fetch("SMTP_USER"),
-    password: ENV.fetch("SMTP_PASS"),
+    user_name: required_runtime_env.call("SMTP_USER", "build-time-user"),
+    password: required_runtime_env.call("SMTP_PASS", "build-time-password"),
     authentication: :plain,
     enable_starttls_auto: true
   }
