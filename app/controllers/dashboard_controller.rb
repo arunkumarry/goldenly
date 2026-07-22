@@ -43,7 +43,7 @@ class DashboardController < ApplicationController
     @care_profile = current_care_profile
     @reminders = @care_profile.reminders.order(:scheduled_for).limit(4)
     @today_reminders = @care_profile.reminders.where(scheduled_for: Time.zone.today.all_day)
-    @service_requests = @care_profile.service_requests.includes(:service_catalog).order(created_at: :desc).limit(3)
+    @service_requests = @care_profile.service_requests.includes(:service_catalog, service_assignment: { care_partner: :profile }).order(created_at: :desc).limit(3)
     @circle_links = @care_profile.care_profile_links.active.includes(:user).where.not(user: current_user).limit(3)
     @audit_events = @care_profile.audit_events.order(occurred_at: :desc).limit(4)
   end

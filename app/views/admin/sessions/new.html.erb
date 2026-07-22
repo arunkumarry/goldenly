@@ -1,0 +1,13 @@
+<% content_for :title, "Admin sign in · Goldenly" %>
+<main class="auth-page admin-auth-page">
+  <section class="workflow-card auth-card admin-auth-card">
+    <%= link_to root_path, class: "brand" do %><%= image_tag "goldenly-logo.png", class: "brand-logo", alt: "" %><span>Goldenly</span><% end %>
+    <p class="eyebrow">GOLDENLY ADMIN</p>
+    <h1>Sign in to admin</h1>
+    <p class="workflow-intro">This is separate from member and Care Partner access. Only Goldenly staff accounts can continue.</p>
+    <%= form_with url: admin_session_path, class: "workflow-form", data: { controller: "identifier", action: "submit->identifier#prepare" } do |form| %>
+      <div class="form-grid"><%= render "shared/identifier_fields" %></div>
+      <%= form.submit "Send admin verification code", class: "primary-button" %>
+    <% end %>
+  </section>
+</main>

@@ -6,21 +6,21 @@
       <div><p class="eyebrow">CARE PARTNER WORKSPACE</p><h1>Welcome, <%= (@profile.display_name.presence || current_user.full_name).split.first %>.</h1><p>Keep your availability current and respond to the right care opportunities.</p></div>
       <%= form_with url: care_partners_availability_path, method: :patch, class: "availability-toggle" do %>
         <span>New requests</span>
-        <%= hidden_field_tag :availability_status, current_care_partner_account.available? ? "paused" : "available" %>
-        <%= submit_tag(current_care_partner_account.available? ? "Available" : "Paused", class: "availability-button #{current_care_partner_account.available? ? 'is-available' : ''}") %>
+        <%= hidden_field_tag :availability_status, current_care_partner.available? ? "paused" : "available" %>
+        <%= submit_tag(current_care_partner.available? ? "Available" : "Paused", class: "availability-button #{current_care_partner.available? ? 'is-available' : ''}") %>
       <% end %>
     </header>
 
     <section class="care-partner-hero">
-      <div><span class="status-pill <%= current_care_partner_account.active? ? 'success' : 'blue' %>"><%= current_care_partner_account.application_status.humanize %></span><h2><%= current_care_partner_account.active? ? "You’re ready to support members." : "Complete your Care Partner application." %></h2><p><%= current_care_partner_account.active? ? "Only suitable requests are shown, and member details remain protected until you accept." : "Your progress is saved securely. A Goldenly moderator makes every final approval decision." %></p><%= link_to(current_care_partner_account.active? ? "Manage services →" : "Continue application →", current_care_partner_account.active? ? care_partners_services_path : care_partners_onboarding_path, class: "care-partner-light-link") %></div>
+      <div><span class="status-pill <%= current_care_partner.active? ? 'success' : 'blue' %>"><%= current_care_partner.application_status.humanize %></span><h2><%= current_care_partner.active? ? "You’re ready to support members." : current_care_partner.approved? ? "Your application is approved." : "Complete your Care Partner application." %></h2><p><%= current_care_partner.active? ? "Only suitable requests are shown, and member details remain protected until you accept." : current_care_partner.approved? ? "Final activation needs an approved service and payout details. You will receive eligible requests once active." : "Your progress is saved securely. A Goldenly moderator makes every final approval decision." %></p><%= link_to(current_care_partner.active? ? "Manage services →" : current_care_partner.approved? ? "View activation details →" : "Continue application →", current_care_partner.active? ? care_partners_services_path : care_partners_onboarding_path, class: "care-partner-light-link") %></div>
       <div class="care-partner-progress"><strong><%= @completion_percentage %>%</strong><span>application readiness</span><i><b style="width: <%= @completion_percentage %>%"></b></i></div>
     </section>
 
     <section class="care-partner-summary-grid">
       <article><span>✦</span><div><small>Open opportunities</small><strong><%= @open_offers.count %></strong></div></article>
       <article><span>◷</span><div><small>Active visits</small><strong><%= @assignments.count %></strong></div></article>
-      <article><span>◉</span><div><small>Available balance</small><strong><%= current_care_partner_account.earnings_ledger_entries.available.sum(:net_payout_cents) > 0 ? EarningsLedgerEntry::MoneyAmount.new(current_care_partner_account.earnings_ledger_entries.available.sum(:net_payout_cents), current_care_partner_account.earnings_ledger_entries.available.first&.currency || "USD") : "—" %></strong></div></article>
-      <article><span>▦</span><div><small>Approved services</small><strong><%= current_care_partner_account.approved_services.count %></strong></div></article>
+      <article><span>◉</span><div><small>Available balance</small><strong><%= current_care_partner.earnings_ledger_entries.available.sum(:net_payout_cents) > 0 ? EarningsLedgerEntry::MoneyAmount.new(current_care_partner.earnings_ledger_entries.available.sum(:net_payout_cents), current_care_partner.earnings_ledger_entries.available.first&.currency || "USD") : "—" %></strong></div></article>
+      <article><span>▦</span><div><small>Approved services</small><strong><%= current_care_partner.approved_services.count %></strong></div></article>
     </section>
 
     <div class="care-partner-columns">

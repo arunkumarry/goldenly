@@ -11,10 +11,10 @@ module CarePartnerMatching
       return [] unless @service_request.requested?
 
       offers = eligible_partner_services.filter_map do |partner_service|
-        account = partner_service.care_partner_account
-        next unless account.eligible_for?(@service_request.service_catalog, care_profile: @service_request.care_profile, preferred_time: @service_request.preferred_time)
+        care_partner = partner_service.care_partner
+        next unless care_partner.eligible_for?(@service_request.service_catalog, care_profile: @service_request.care_profile, preferred_time: @service_request.preferred_time)
 
-        offer = ServiceOffer.find_or_initialize_by(service_request: @service_request, care_partner_account: account)
+        offer = ServiceOffer.find_or_initialize_by(service_request: @service_request, care_partner: care_partner)
         next offer if offer.persisted? && offer.open?
 
         offer.assign_attributes(
@@ -25,6 +25,7 @@ module CarePartnerMatching
           eligibility_snapshot: minimal_snapshot(partner_service)
         )
         offer.save!
+        CarePartnerOfferBroadcast.publish(offer)
         offer
       end
 
@@ -41,7 +42,7 @@ module CarePartnerMatching
     private
 
     def eligible_partner_services
-      CarePartnerService.active.includes(:service_catalog, care_partner_account: :profile)
+      CarePartnerService.active.includes(:service_catalog, care_partner: :profile)
         .where(service_catalog: @service_request.service_catalog)
     end
 

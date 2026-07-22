@@ -7,13 +7,6 @@
       <%= link_to path, class: "nav-link #{current_page?(path) ? 'active' : ''}" do %><span aria-hidden="true"><%= icon %></span><%= label %><% end %>
     <% end %>
   </nav>
-  <% if current_user.can_review_care_partners? %>
-    <div class="care-partner-admin-links">
-      <p class="eyebrow">GOLDENLY REVIEW</p>
-      <%= link_to "Applications", moderation_care_partner_applications_path, class: "nav-link #{controller_path.start_with?('moderation/care_partner') ? 'active' : ''}" %>
-      <%= link_to "Manual payouts", moderation_earnings_path, class: "nav-link #{controller_path == 'moderation/earnings' ? 'active' : ''}" %>
-    </div>
-  <% end %>
   <div class="sidebar-footer">
     <div class="avatar small"><%= current_user.full_name.first %></div>
     <div><strong><%= current_user.full_name %></strong><span>Care Partner</span></div>

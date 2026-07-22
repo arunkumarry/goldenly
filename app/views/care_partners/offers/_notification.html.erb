@@ -1,0 +1,5 @@
+<aside id="<%= dom_id(offer, :notification) %>" class="offer-notification" role="status">
+  <strong>New matching request</strong>
+  <span><%= offer.service_request.service_catalog.name %> · <%= offer.eligibility_snapshot["broad_location"].presence || "your service area" %></span>
+  <%= link_to "View request", care_partners_offers_path(anchor: dom_id(offer)) %>
+</aside>

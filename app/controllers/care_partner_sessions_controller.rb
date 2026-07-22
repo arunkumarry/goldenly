@@ -33,7 +33,7 @@ class CarePartnerSessionsController < ApplicationController
 
     user = AuthenticationIdentifier.find_user(identifier) || create_care_partner_user!(identifier)
     user.update!(verified_at: Time.current) if user.verified_at.blank?
-    user.care_partner_account || user.create_care_partner_account!
+    user.care_partner || user.create_care_partner!
     session.delete(:pending_care_partner_identifier)
     session.delete(:pending_care_partner_signup)
     session[:care_partner_user_id] = user.id

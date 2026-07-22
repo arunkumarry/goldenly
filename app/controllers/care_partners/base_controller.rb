@@ -5,19 +5,13 @@ class CarePartners::BaseController < ApplicationController
 
   skip_before_action :require_authentication
   before_action :require_care_partner_authentication
-  before_action :ensure_care_partner_account!
-
-  helper_method :current_care_partner_account
+  before_action :ensure_care_partner!
 
   private
 
-  def current_care_partner_account
-    @current_care_partner_account ||= current_care_partner_user.care_partner_account
-  end
-
-  def ensure_care_partner_account!
-    @current_care_partner_account ||= current_care_partner_user.care_partner_account || current_care_partner_user.create_care_partner_account!
-    @current_care_partner_account.profile || @current_care_partner_account.create_profile!
+  def ensure_care_partner!
+    @current_care_partner ||= current_care_partner_user.care_partner || current_care_partner_user.create_care_partner!
+    @current_care_partner.profile || @current_care_partner.create_profile!
   end
 
 end

@@ -1,8 +1,8 @@
 class CarePartnerModerationDecision
   class InvalidDecision < StandardError; end
 
-  def initialize(care_partner_account, reviewer:, decision:, reason:, requested_sections: [], ai_assistance: {})
-    @care_partner_account = care_partner_account
+  def initialize(care_partner, reviewer:, decision:, reason:, requested_sections: [], ai_assistance: {})
+    @care_partner = care_partner
     @reviewer = reviewer
     @decision = decision.to_s
     @reason = reason
@@ -14,10 +14,10 @@ class CarePartnerModerationDecision
     raise InvalidDecision, "A human review reason is required." if @reason.blank?
     raise InvalidDecision, "Only Goldenly reviewers can make this decision." unless @reviewer.can_review_care_partners?
 
-    CarePartnerAccount.transaction do
+    CarePartner.transaction do
       apply_status!
       ModeratorReview.create!(
-        care_partner_account: @care_partner_account,
+        care_partner: @care_partner,
         reviewer: @reviewer,
         decision: @decision,
         reason: @reason,
@@ -28,9 +28,9 @@ class CarePartnerModerationDecision
     AuditTrail.record!(
       action: "care_partner.moderator_#{@decision}",
       actor: @reviewer,
-      metadata: { care_partner_account_id: @care_partner_account.id, requested_sections: @requested_sections }
+      metadata: { care_partner_id: @care_partner.id, requested_sections: @requested_sections }
     )
-    @care_partner_account
+    @care_partner
   end
 
   private
@@ -38,16 +38,15 @@ class CarePartnerModerationDecision
   def apply_status!
     case @decision
     when "under_review", "changes_requested", "rejected", "suspended"
-      @care_partner_account.transition_to!(@decision, note: @reason)
+      @care_partner.update!(verification_status: @decision) if %w[changes_requested rejected].include?(@decision)
+      @care_partner.transition_to!(@decision, note: @reason)
     when "approved"
-      raise InvalidDecision, "Verify an identity document before approval." unless @care_partner_account.identity_verified?
+      raise InvalidDecision, "Review at least one identity document before approval." if @care_partner.verification_documents.empty?
 
-      @care_partner_account.care_partner_services.pending.find_each do |service|
-        eligible = !service.service_catalog.requires_professional_credential? || @care_partner_account.current_credential_for?(service.service_catalog)
-        service.update!(status: eligible ? :active : :pending)
-      end
-      @care_partner_account.transition_to!(:approved, note: @reason)
-      @care_partner_account.transition_to!(:active, note: @reason) if @care_partner_account.activation_ready?
+      @care_partner.approve_verification!
+      @care_partner.care_partner_services.pending.find_each { |service| service.update!(status: :active) }
+      @care_partner.transition_to!(:approved, note: @reason)
+      @care_partner.activate_if_ready!
     else
       raise InvalidDecision, "Unsupported moderator decision."
     end

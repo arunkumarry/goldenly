@@ -36,7 +36,33 @@
           <% @reminders.each_with_index do |reminder, index| %><%= render "reminders/reminder", reminder: reminder, index: index %><% end %>
           <% if @reminders.empty? %><p class="empty-state">No reminders yet. <%= link_to "Create the first reminder", new_reminder_path %>.</p><% end %>
           <div class="request-list-heading"><p class="eyebrow">SERVICE REQUESTS</p><h3>Recent requests</h3></div>
-          <% @service_requests.each do |service_request| %><article class="schedule-item"><time><%= service_request.preferred_time ? service_request.preferred_time.strftime("%-d %b") : "Flexible" %></time><span class="timeline-dot"></span><div><strong><%= service_request.service_type %></strong><small><%= service_request.status.humanize %></small></div><% if service_request.awaiting_confirmation? %><%= button_to "Confirm", service_request_path(service_request), method: :patch, params: { service_request: { status: "requested" } }, class: "secondary-button" %><% elsif service_request.submitted_for_confirmation? %><%= link_to "Confirm service", service_request_completion_path(service_request), class: "secondary-button" %><% end %></article><% end %>
+          <% @service_requests.each do |service_request| %>
+            <% care_partner = service_request.service_assignment&.care_partner %>
+            <% provider_profile = care_partner&.profile %>
+            <% provider_name = provider_profile&.display_name.presence || care_partner&.user&.full_name %>
+            <article class="schedule-item service-request-item">
+              <time><%= service_request.preferred_time ? service_request.preferred_time.strftime("%-d %b") : "Flexible" %></time><span class="timeline-dot"></span>
+              <div>
+                <strong><%= service_request.service_type %></strong>
+                <small><%= service_request.status.humanize %></small>
+                <% if care_partner %>
+                  <details class="service-provider-disclosure">
+                    <summary>With <%= provider_name %></summary>
+                    <section class="service-provider-card">
+                      <% if provider_profile&.profile_photo&.attached? %>
+                        <%= image_tag provider_profile.profile_photo, class: "service-provider-photo", alt: "#{provider_name} profile photo" %>
+                      <% else %>
+                        <span class="service-provider-avatar"><%= provider_name.first %></span>
+                      <% end %>
+                      <div><strong><%= provider_name %></strong><small>Assigned Care Partner</small><% if provider_profile&.broad_location.present? %><small><%= provider_profile.broad_location %></small><% end %><% if care_partner.user.phone_number.present? %><small><%= care_partner.user.phone_number %></small><% elsif care_partner.user.email_address.present? %><small><%= care_partner.user.email_address %></small><% end %></div>
+                      <div class="service-provider-actions"><%= link_to "Call", "tel:#{care_partner.user.phone_number}", class: "secondary-button" if care_partner.user.phone_number.present? %><%= link_to "Email", "mailto:#{care_partner.user.email_address}", class: "secondary-button" if care_partner.user.email_address.present? %></div>
+                    </section>
+                  </details>
+                <% end %>
+              </div>
+              <% if service_request.awaiting_confirmation? %><%= button_to "Confirm", service_request_path(service_request), method: :patch, params: { service_request: { status: "requested" } }, class: "secondary-button" %><% elsif service_request.submitted_for_confirmation? %><%= link_to "Confirm service", service_request_completion_path(service_request), class: "secondary-button" %><% end %>
+            </article>
+          <% end %>
           <% if @service_requests.empty? %><p class="empty-state">No service requests yet. <%= link_to "Request support", new_service_request_path %>.</p><% end %>
         </div>
       </section>

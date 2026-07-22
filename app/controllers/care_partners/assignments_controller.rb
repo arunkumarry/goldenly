@@ -2,7 +2,7 @@ class CarePartners::AssignmentsController < CarePartners::BaseController
   before_action :load_assignment, only: %i[show check_in start submit_completion]
 
   def index
-    @assignments = current_care_partner_account.service_assignments.includes(service_request: [ :service_catalog, :care_profile ]).order(updated_at: :desc)
+    @assignments = current_care_partner.service_assignments.includes(service_request: [ :service_catalog, :care_profile ]).order(updated_at: :desc)
   end
 
   def show; end
@@ -37,7 +37,7 @@ class CarePartners::AssignmentsController < CarePartners::BaseController
   private
 
   def load_assignment
-    @assignment = current_care_partner_account.service_assignments.includes(service_request: [ :service_catalog, :care_profile ]).find(params[:id])
+    @assignment = current_care_partner.service_assignments.includes(service_request: [ :service_catalog, :care_profile ]).find(params[:id])
   end
 
   def completion_params

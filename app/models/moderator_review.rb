@@ -1,5 +1,5 @@
 class ModeratorReview < ApplicationRecord
-  belongs_to :care_partner_account
+  belongs_to :care_partner
   belongs_to :reviewer, class_name: "User"
 
   enum :decision, {

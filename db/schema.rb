@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_22_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_23_093000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -66,30 +66,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_130000) do
     t.index ["user_id"], name: "index_authentication_tokens_on_user_id"
   end
 
-  create_table "care_partner_accounts", force: :cascade do |t|
-    t.string "application_status", default: "draft", null: false
-    t.datetime "approved_at"
-    t.string "availability_status", default: "paused", null: false
-    t.datetime "code_of_conduct_accepted_at"
-    t.datetime "created_at", null: false
-    t.integer "onboarding_step", default: 1, null: false
-    t.string "payout_method_summary"
-    t.string "payout_status", default: "not_started", null: false
-    t.datetime "privacy_accepted_at"
-    t.text "review_note"
-    t.datetime "service_standards_accepted_at"
-    t.datetime "submitted_at"
-    t.datetime "suspended_at"
-    t.datetime "terms_accepted_at"
-    t.string "terms_version"
-    t.datetime "updated_at", null: false
-    t.bigint "user_id", null: false
-    t.index ["application_status", "availability_status"], name: "idx_on_application_status_availability_status_6d716cc234"
-    t.index ["user_id"], name: "index_care_partner_accounts_on_user_id", unique: true
-  end
-
   create_table "care_partner_credentials", force: :cascade do |t|
-    t.bigint "care_partner_account_id", null: false
+    t.bigint "care_partner_id", null: false
     t.datetime "created_at", null: false
     t.string "credential_reference"
     t.string "credential_type", null: false
@@ -101,14 +79,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_130000) do
     t.bigint "service_catalog_id"
     t.datetime "updated_at", null: false
     t.string "verification_status", default: "pending", null: false
-    t.index ["care_partner_account_id", "service_catalog_id"], name: "index_care_partner_credentials_on_account_and_service"
-    t.index ["care_partner_account_id"], name: "index_care_partner_credentials_on_care_partner_account_id"
+    t.index ["care_partner_id", "service_catalog_id"], name: "index_care_partner_credentials_on_partner_and_service"
+    t.index ["care_partner_id"], name: "index_care_partner_credentials_on_care_partner_id"
     t.index ["service_catalog_id"], name: "index_care_partner_credentials_on_service_catalog_id"
   end
 
   create_table "care_partner_profiles", force: :cascade do |t|
     t.string "address"
-    t.bigint "care_partner_account_id", null: false
+    t.bigint "care_partner_id", null: false
     t.string "city"
     t.string "country"
     t.string "country_code", limit: 2
@@ -129,14 +107,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_130000) do
     t.string "profile_photo_url"
     t.string "region"
     t.datetime "updated_at", null: false
-    t.index ["care_partner_account_id"], name: "index_care_partner_profiles_on_care_partner_account_id", unique: true
+    t.index ["care_partner_id"], name: "index_care_partner_profiles_on_care_partner_id", unique: true
     t.index ["country_code", "city"], name: "index_care_partner_profiles_on_country_code_and_city"
     t.index ["google_place_id"], name: "index_care_partner_profiles_on_google_place_id"
   end
 
   create_table "care_partner_services", force: :cascade do |t|
     t.jsonb "availability", default: {}, null: false
-    t.bigint "care_partner_account_id", null: false
+    t.bigint "care_partner_id", null: false
+    t.jsonb "coverage_place", default: {}, null: false
     t.datetime "created_at", null: false
     t.jsonb "languages", default: [], null: false
     t.integer "max_concurrent_visits", default: 1, null: false
@@ -146,14 +125,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_130000) do
     t.string "status", default: "pending", null: false
     t.integer "travel_radius_km"
     t.datetime "updated_at", null: false
-    t.index ["care_partner_account_id", "service_catalog_id"], name: "index_care_partner_services_on_account_and_catalog", unique: true
-    t.index ["care_partner_account_id"], name: "index_care_partner_services_on_care_partner_account_id"
+    t.index ["care_partner_id", "service_catalog_id"], name: "index_care_partner_services_on_partner_and_catalog", unique: true
+    t.index ["care_partner_id"], name: "index_care_partner_services_on_care_partner_id"
     t.index ["service_catalog_id", "status"], name: "index_care_partner_services_on_catalog_and_status"
     t.index ["service_catalog_id"], name: "index_care_partner_services_on_service_catalog_id"
   end
 
   create_table "care_partner_verification_documents", force: :cascade do |t|
-    t.bigint "care_partner_account_id", null: false
+    t.bigint "care_partner_id", null: false
     t.string "country_code", limit: 2
     t.datetime "created_at", null: false
     t.string "document_type", null: false
@@ -163,8 +142,33 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_130000) do
     t.text "review_note"
     t.datetime "updated_at", null: false
     t.string "verification_status", default: "pending", null: false
-    t.index ["care_partner_account_id", "verification_status"], name: "index_care_partner_documents_on_account_and_status"
-    t.index ["care_partner_account_id"], name: "index_care_partner_documents_on_account"
+    t.index ["care_partner_id", "verification_status"], name: "index_care_partner_documents_on_partner_and_status"
+    t.index ["care_partner_id"], name: "index_care_partner_documents_on_partner"
+  end
+
+  create_table "care_partners", force: :cascade do |t|
+    t.string "application_status", default: "draft", null: false
+    t.datetime "approved_at"
+    t.string "availability_status", default: "paused", null: false
+    t.datetime "code_of_conduct_accepted_at"
+    t.datetime "created_at", null: false
+    t.integer "onboarding_step", default: 1, null: false
+    t.string "payout_method_summary"
+    t.string "payout_status", default: "not_started", null: false
+    t.datetime "privacy_accepted_at"
+    t.text "review_note"
+    t.datetime "service_standards_accepted_at"
+    t.datetime "submitted_at"
+    t.datetime "suspended_at"
+    t.datetime "terms_accepted_at"
+    t.string "terms_version"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.string "verification_status", default: "pending", null: false
+    t.datetime "verified_at"
+    t.index ["application_status", "availability_status"], name: "idx_on_application_status_availability_status_0e2520faba"
+    t.index ["user_id"], name: "index_care_partners_on_user_id", unique: true
+    t.index ["verification_status"], name: "index_care_partners_on_verification_status"
   end
 
   create_table "care_profile_links", force: :cascade do |t|
@@ -239,7 +243,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_130000) do
   create_table "earnings_ledger_entries", force: :cascade do |t|
     t.integer "adjustment_cents", default: 0, null: false
     t.datetime "available_at"
-    t.bigint "care_partner_account_id", null: false
+    t.bigint "care_partner_id", null: false
     t.datetime "created_at", null: false
     t.string "currency", default: "USD", null: false
     t.integer "goldenly_fee_cents", default: 0, null: false
@@ -251,8 +255,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_130000) do
     t.integer "service_value_cents", default: 0, null: false
     t.string "status", default: "estimated", null: false
     t.datetime "updated_at", null: false
-    t.index ["care_partner_account_id", "status"], name: "index_earnings_ledger_entries_on_account_and_status"
-    t.index ["care_partner_account_id"], name: "index_earnings_ledger_entries_on_care_partner_account_id"
+    t.index ["care_partner_id", "status"], name: "index_earnings_ledger_entries_on_partner_and_status"
+    t.index ["care_partner_id"], name: "index_earnings_ledger_entries_on_care_partner_id"
     t.index ["service_assignment_id"], name: "index_earnings_ledger_entries_on_service_assignment_id", unique: true
   end
 
@@ -284,15 +288,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_130000) do
 
   create_table "moderator_reviews", force: :cascade do |t|
     t.jsonb "ai_assistance", default: {}, null: false
-    t.bigint "care_partner_account_id", null: false
+    t.bigint "care_partner_id", null: false
     t.datetime "created_at", null: false
     t.string "decision", null: false
     t.text "reason", null: false
     t.jsonb "requested_sections", default: [], null: false
     t.bigint "reviewer_id", null: false
     t.datetime "updated_at", null: false
-    t.index ["care_partner_account_id", "created_at"], name: "index_moderator_reviews_on_account_and_created_at"
-    t.index ["care_partner_account_id"], name: "index_moderator_reviews_on_care_partner_account_id"
+    t.index ["care_partner_id", "created_at"], name: "index_moderator_reviews_on_partner_and_created_at"
+    t.index ["care_partner_id"], name: "index_moderator_reviews_on_care_partner_id"
     t.index ["reviewer_id"], name: "index_moderator_reviews_on_reviewer_id"
   end
 
@@ -331,7 +335,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_130000) do
   create_table "service_assignments", force: :cascade do |t|
     t.datetime "accepted_at", null: false
     t.string "cancellation_reason"
-    t.bigint "care_partner_account_id", null: false
+    t.bigint "care_partner_id", null: false
     t.datetime "checked_in_at"
     t.datetime "completed_at"
     t.string "completion_outcome"
@@ -346,8 +350,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_130000) do
     t.datetime "started_at"
     t.string "status", default: "assigned", null: false
     t.datetime "updated_at", null: false
-    t.index ["care_partner_account_id", "status"], name: "index_service_assignments_on_account_and_status"
-    t.index ["care_partner_account_id"], name: "index_service_assignments_on_care_partner_account_id"
+    t.index ["care_partner_id", "status"], name: "index_service_assignments_on_partner_and_status"
+    t.index ["care_partner_id"], name: "index_service_assignments_on_care_partner_id"
     t.index ["service_request_id"], name: "index_service_assignments_on_service_request_id", unique: true
   end
 
@@ -368,7 +372,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_130000) do
   end
 
   create_table "service_offers", force: :cascade do |t|
-    t.bigint "care_partner_account_id", null: false
+    t.bigint "care_partner_id", null: false
     t.datetime "created_at", null: false
     t.jsonb "eligibility_snapshot", default: {}, null: false
     t.datetime "expires_at"
@@ -377,9 +381,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_130000) do
     t.bigint "service_request_id", null: false
     t.string "status", default: "offered", null: false
     t.datetime "updated_at", null: false
-    t.index ["care_partner_account_id", "status", "expires_at"], name: "index_service_offers_on_account_status_and_expiry"
-    t.index ["care_partner_account_id"], name: "index_service_offers_on_care_partner_account_id"
-    t.index ["service_request_id", "care_partner_account_id"], name: "idx_on_service_request_id_care_partner_account_id_d2bf398ad0", unique: true
+    t.index ["care_partner_id", "status", "expires_at"], name: "index_service_offers_on_partner_status_and_expiry"
+    t.index ["care_partner_id"], name: "index_service_offers_on_care_partner_id"
+    t.index ["service_request_id", "care_partner_id"], name: "index_service_offers_on_service_request_id_and_care_partner_id", unique: true
     t.index ["service_request_id"], name: "index_service_offers_on_service_request_id"
   end
 
@@ -455,30 +459,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_22_130000) do
   add_foreign_key "audit_events", "care_profiles"
   add_foreign_key "audit_events", "users", column: "actor_user_id"
   add_foreign_key "authentication_tokens", "users"
-  add_foreign_key "care_partner_accounts", "users"
-  add_foreign_key "care_partner_credentials", "care_partner_accounts"
+  add_foreign_key "care_partner_credentials", "care_partners"
   add_foreign_key "care_partner_credentials", "service_catalogs"
-  add_foreign_key "care_partner_profiles", "care_partner_accounts"
-  add_foreign_key "care_partner_services", "care_partner_accounts"
+  add_foreign_key "care_partner_profiles", "care_partners"
+  add_foreign_key "care_partner_services", "care_partners"
   add_foreign_key "care_partner_services", "service_catalogs"
-  add_foreign_key "care_partner_verification_documents", "care_partner_accounts"
+  add_foreign_key "care_partner_verification_documents", "care_partners"
+  add_foreign_key "care_partners", "users"
   add_foreign_key "care_profile_links", "care_profiles"
   add_foreign_key "care_profile_links", "users"
   add_foreign_key "care_profiles", "users", column: "owner_user_id"
   add_foreign_key "consent_records", "care_profiles"
   add_foreign_key "consent_records", "users", column: "actor_user_id"
   add_foreign_key "device_push_tokens", "users"
-  add_foreign_key "earnings_ledger_entries", "care_partner_accounts"
+  add_foreign_key "earnings_ledger_entries", "care_partners"
   add_foreign_key "earnings_ledger_entries", "service_assignments"
   add_foreign_key "emergency_alerts", "care_profiles"
-  add_foreign_key "moderator_reviews", "care_partner_accounts"
+  add_foreign_key "moderator_reviews", "care_partners"
   add_foreign_key "moderator_reviews", "users", column: "reviewer_id"
   add_foreign_key "profile_invitations", "care_profiles"
   add_foreign_key "profile_invitations", "users", column: "invited_by_id"
   add_foreign_key "reminders", "care_profiles"
-  add_foreign_key "service_assignments", "care_partner_accounts"
+  add_foreign_key "service_assignments", "care_partners"
   add_foreign_key "service_assignments", "service_requests"
-  add_foreign_key "service_offers", "care_partner_accounts"
+  add_foreign_key "service_offers", "care_partners"
   add_foreign_key "service_offers", "service_requests"
   add_foreign_key "service_requests", "care_profiles"
   add_foreign_key "service_requests", "service_catalogs"

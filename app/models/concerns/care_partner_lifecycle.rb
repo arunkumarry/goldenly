@@ -3,7 +3,9 @@ module CarePartnerLifecycle
 
   APPLICATION_TRANSITIONS = {
     "draft" => %w[submitted],
-    "submitted" => %w[under_review changes_requested rejected],
+    # A human admin can approve a complete, submitted application in one
+    # decision. Starting a separate under-review state remains available.
+    "submitted" => %w[under_review changes_requested approved rejected],
     "under_review" => %w[changes_requested approved rejected],
     "changes_requested" => %w[submitted],
     "approved" => %w[active suspended],

@@ -9,7 +9,6 @@
     <% end %>
   </nav>
   <% if current_care_profile %><%= render "shared/member_switcher", label: "Active care profile" %><% end %>
-  <div class="member-workspace-link"><%= link_to current_care_partner_user ? "Care Partner workspace →" : "Care Partner sign in →", current_care_partner_user ? care_partners_root_path : new_care_partner_session_path %></div>
   <div class="sidebar-footer">
     <div class="avatar small"><%= current_user.full_name.first %></div>
     <div><strong><%= current_user.full_name %></strong><span>My account</span></div>

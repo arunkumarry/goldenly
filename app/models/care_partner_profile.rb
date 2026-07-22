@@ -2,7 +2,7 @@ class CarePartnerProfile < ApplicationRecord
   PROFILE_PHOTO_CONTENT_TYPES = %w[image/jpeg image/png image/webp].freeze
   PROFILE_PHOTO_MAX_SIZE = 5.megabytes
 
-  belongs_to :care_partner_account
+  belongs_to :care_partner
   has_one_attached :profile_photo
 
   normalizes :country_code, with: ->(value) { value&.upcase&.strip }

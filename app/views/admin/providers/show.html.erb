@@ -1,0 +1,66 @@
+<% content_for :title, "Review #{@provider.profile&.display_name || @provider.user.full_name} · Goldenly Admin" %>
+
+<main class="admin-workspace">
+  <%= render "admin/shared/sidebar" %>
+
+  <section class="admin-content">
+    <%= link_to "← Provider applications", admin_providers_path, class: "back-link" %>
+    <header class="admin-page-heading">
+      <p class="eyebrow">PROVIDER REVIEW</p>
+      <h1><%= @provider.profile&.display_name || @provider.user.full_name %></h1>
+      <p><%= @provider.profile&.country || @provider.user.country || "Country not supplied" %> · application <strong><%= @provider.application_status.humanize %></strong> · verification <strong><%= @provider.verification_status.humanize %></strong>.</p>
+    </header>
+
+    <div class="admin-review-grid">
+      <section class="admin-panel">
+        <p class="eyebrow">APPLICATION</p><h2>Submitted details</h2>
+        <dl class="admin-details">
+          <div><dt>Legal name</dt><dd><%= @provider.profile&.legal_name || "—" %></dd></div>
+          <div><dt>Email</dt><dd><%= @provider.user.email_address || "—" %></dd></div>
+          <div><dt>Phone</dt><dd><%= @provider.user.phone_number || "—" %></dd></div>
+          <div><dt>Location</dt><dd><%= @provider.profile&.broad_location.presence || "—" %></dd></div>
+          <div><dt>Languages</dt><dd><%= @provider.profile&.languages&.to_sentence || "—" %></dd></div>
+          <div><dt>Payout method</dt><dd><%= @provider.payout_method_summary || "—" %></dd></div>
+          <div><dt>Experience</dt><dd><%= @provider.profile&.experience_summary || "—" %></dd></div>
+          <div><dt>Introduction video</dt><dd><%= @provider.profile&.introduction_video_url.present? ? link_to("Open link", @provider.profile.introduction_video_url, target: "_blank", rel: "noreferrer") : "—" %></dd></div>
+        </dl>
+
+        <h3>Identity evidence</h3>
+        <% @provider.verification_documents.each do |document| %>
+          <article class="admin-evidence-row"><div><strong><%= document.document_type.humanize %></strong><small><%= document.redacted_reference.presence || "No reference supplied" %> · expires <%= document.expires_on || "not supplied" %></small></div><div class="admin-evidence-links"><% document.evidence_photos.each_with_index do |photo, index| %><%= link_to "Photo #{index + 1}", url_for(photo), target: "_blank", rel: "noreferrer" %><% end %><%= link_to "Reference", document.file_reference, target: "_blank", rel: "noreferrer" if document.file_reference.present? %></div></article>
+        <% end %>
+        <% if @provider.verification_documents.empty? %><p class="empty-state">No identity evidence was submitted.</p><% end %>
+
+        <h3>Credentials</h3>
+        <% @provider.credentials.each do |credential| %>
+          <article class="admin-evidence-row"><div><strong><%= credential.credential_type %></strong><small><%= credential.service_catalog&.name || "General" %> · <%= credential.issuer %> · expires <%= credential.expires_on || "not supplied" %></small></div><%= link_to "View", credential.file_reference, target: "_blank", rel: "noreferrer" if credential.file_reference.present? %></article>
+        <% end %>
+        <% if @provider.credentials.empty? %><p class="empty-state">No professional credentials are required for the selected non-clinical services.</p><% end %>
+
+        <h3>Selected services</h3>
+        <% @provider.care_partner_services.each do |service| %><article class="admin-evidence-row"><div><strong><%= service.service_catalog.name %></strong><small><%= service.coverage_label || "Coverage not supplied" %> · <%= service.status.humanize %></small></div></article><% end %>
+      </section>
+
+      <section class="admin-panel admin-decision-panel">
+        <p class="eyebrow">HUMAN DECISION</p><h2>Review and update</h2>
+        <p>Only an admin can make this decision. It is recorded in the provider audit history.</p>
+        <% if @provider.active_and_available? %><p class="admin-ready-callout">This provider is approved and ready to receive matching requests.</p><% end %>
+        <%= form_with url: admin_provider_path(@provider), method: :patch, scope: :moderator_review, class: "admin-decision-form" do |form| %>
+          <%= form.label :decision, "Decision" %>
+          <%= form.select :decision, [["Start review", "under_review"], ["Request changes", "changes_requested"], ["Approve and activate", "approved"], ["Reject", "rejected"], ["Suspend", "suspended"]], prompt: "Choose a decision" %>
+          <%= form.label :reason, "Reason for provider and audit trail" %>
+          <%= form.text_area :reason, rows: 6, required: true, placeholder: "State the evidence reviewed or the changes required." %>
+          <%= form.label :requested_sections, "Sections that need changes" %>
+          <%= form.select :requested_sections, [["Identity document", "identity"], ["Credential", "credential"], ["Introduction video", "video"], ["Service zones", "service_zones"], ["Payout method", "payout"]], {}, multiple: true %>
+          <%= form.submit "Save human decision", class: "primary-button" %>
+        <% end %>
+      </section>
+    </div>
+
+    <section class="admin-panel admin-review-history">
+      <p class="eyebrow">AUDIT HISTORY</p><h2>Previous review decisions</h2>
+      <% @reviews.each do |review| %><article><div><strong><%= review.decision.humanize %></strong><small><%= review.reviewer.full_name %> · <%= review.created_at.to_fs(:long) %></small></div><p><%= review.reason %></p></article><% end %>
+      <% if @reviews.empty? %><p class="empty-state">No human decisions have been recorded.</p><% end %>
+    </section>
+  </section>
+</main>

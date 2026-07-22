@@ -1,0 +1,61 @@
+<% clinical_service_ids = service_catalogs.select { |service_catalog| CarePartnerServiceEnrollment.credential_required_for?(service_catalog) }.map(&:id) %>
+<% selected_days = Array(care_partner_service.availability["days"]) %>
+<% credential = local_assigns[:credential] || CarePartnerCredential.new %>
+<% editing = local_assigns.fetch(:editing, false) %>
+<% coverage_place = care_partner_service.coverage_place.presence || {} %>
+<% coverage_input = [coverage_place["city"], coverage_place["region"], coverage_place["country"]].compact_blank.join(", ").presence || care_partner_service.service_zones.join(", ") %>
+<% form_options = { model: care_partner_service, url: local_assigns.fetch(:form_url, care_partners_services_path), class: "care-partner-form service-enrollment-form", data: { controller: "service-enrollment", service_enrollment_clinical_service_ids_value: clinical_service_ids.to_json } } %>
+<% form_options[:method] = local_assigns[:form_method] if local_assigns[:form_method].present? %>
+
+<%= form_with **form_options do |form| %>
+  <%= hidden_field_tag :return_to_onboarding, "1" if return_to_onboarding %>
+
+  <div class="care-partner-form-grid two">
+    <div class="full">
+      <%= form.label :service_catalog_id, "Choose service" %>
+      <% if editing %><%= form.hidden_field :service_catalog_id %><% end %>
+      <%= form.collection_select :service_catalog_id, service_catalogs, :id, :name, { prompt: "Choose a service" }, required: true, disabled: editing, data: { service_enrollment_target: "service", action: "change->service-enrollment#toggle" } %>
+    </div>
+
+    <div class="full service-enrollment-details" data-service-enrollment-target="details" hidden>
+      <div class="care-partner-form-grid two">
+        <div data-controller="service-coverage-autocomplete">
+          <%= label_tag "care_partner_service_service_zones_text", "Service coverage area" %>
+          <%= text_field_tag "care_partner_service[service_zones_text]", coverage_input, placeholder: "Start typing a city or area", autocomplete: "off", data: { service_coverage_autocomplete_target: "input", action: "input->service-coverage-autocomplete#search", service_enrollment_target: "serviceZone" } %>
+          <div class="address-results" data-service-coverage-autocomplete-target="results"></div>
+          <%= hidden_field_tag "care_partner_service[coverage_place_id]", coverage_place["place_id"], data: { service_coverage_autocomplete_target: "placeId" } %>
+          <%= hidden_field_tag "care_partner_service[coverage_address]", coverage_place["address"], data: { service_coverage_autocomplete_target: "address" } %>
+          <%= hidden_field_tag "care_partner_service[coverage_city]", coverage_place["city"], data: { service_coverage_autocomplete_target: "city" } %>
+          <%= hidden_field_tag "care_partner_service[coverage_region]", coverage_place["region"], data: { service_coverage_autocomplete_target: "region" } %>
+          <%= hidden_field_tag "care_partner_service[coverage_country]", coverage_place["country"], data: { service_coverage_autocomplete_target: "country" } %>
+          <%= hidden_field_tag "care_partner_service[coverage_country_code]", coverage_place["country_code"], data: { service_coverage_autocomplete_target: "countryCode" } %>
+          <%= hidden_field_tag "care_partner_service[coverage_latitude]", coverage_place["latitude"], data: { service_coverage_autocomplete_target: "latitude" } %>
+          <%= hidden_field_tag "care_partner_service[coverage_longitude]", coverage_place["longitude"], data: { service_coverage_autocomplete_target: "longitude" } %>
+        </div>
+        <div><%= form.label :travel_radius_km, "Travel radius (km)" %><%= form.number_field :travel_radius_km, min: 1, max: 200 %></div>
+        <div><%= label_tag "care_partner_service_languages_text", "Languages" %><%= text_field_tag "care_partner_service[languages_text]", care_partner_service.languages.presence&.join(", ") || profile.languages.join(", "), placeholder: "English, Telugu" %></div>
+        <div><%= form.label :max_concurrent_visits, "Maximum concurrent visits" %><%= form.number_field :max_concurrent_visits, min: 1, max: 20, value: care_partner_service.max_concurrent_visits || 1 %></div>
+        <div class="full">
+          <span class="service-field-label">Available days <small>(leave blank if flexible)</small></span>
+          <div class="available-days-options">
+            <% %w[Monday Tuesday Wednesday Thursday Friday Saturday Sunday].each do |day| %>
+              <label class="available-day-option"><%= check_box_tag "care_partner_service[available_days][]", day, selected_days.include?(day) %><span><%= day.first(3) %></span></label>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <div class="service-credential-fields" data-service-enrollment-target="credentialDetails" hidden>
+        <p><strong>Professional credential required</strong><br>Medical Health Checkup and Diagnostic Service need a credential before human review.</p>
+        <div class="care-partner-form-grid two">
+          <div><%= label_tag "care_partner_credential_credential_type", "Credential or certification" %><%= text_field_tag "care_partner_credential[credential_type]", credential.credential_type, placeholder: "Clinical licence or lab certification", data: { service_enrollment_target: "credentialType" } %></div>
+          <div><%= label_tag "care_partner_credential_issuer", "Issuing body" %><%= text_field_tag "care_partner_credential[issuer]", credential.issuer, placeholder: "Licensing or certification authority", data: { service_enrollment_target: "credentialIssuer" } %></div>
+          <div><%= label_tag "care_partner_credential_credential_reference", "Registration or certificate reference" %><%= text_field_tag "care_partner_credential[credential_reference]", credential.credential_reference, placeholder: "Use a redacted reference where appropriate" %></div>
+          <div><%= label_tag "care_partner_credential_expires_on", "Expiry date (if applicable)" %><%= date_field_tag "care_partner_credential[expires_on]", credential.expires_on %></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%= form.submit submit_label, class: "primary-button" %>
+<% end %>

@@ -1,0 +1,14 @@
+<% content_for :title, "Verify admin sign in · Goldenly" %>
+<main class="auth-page admin-auth-page">
+  <section class="workflow-card auth-card admin-auth-card">
+    <%= link_to root_path, class: "brand" do %><%= image_tag "goldenly-logo.png", class: "brand-logo", alt: "" %><span>Goldenly</span><% end %>
+    <p class="eyebrow">GOLDENLY ADMIN</p>
+    <h1>Enter your verification code</h1>
+    <p class="workflow-intro">Use the code sent to <strong><%= session[:pending_admin_identifier] %></strong>.</p>
+    <%= form_with url: verify_admin_session_path, class: "workflow-form" do |form| %>
+      <div class="form-grid"><%= form.label :code, "Verification code" %><%= form.text_field :code, inputmode: "numeric", autocomplete: "one-time-code", maxlength: 6, required: true, autofocus: true %></div>
+      <%= form.submit "Verify and continue", class: "primary-button" %>
+    <% end %>
+    <p class="auth-switch"><%= link_to "Use a different identifier", new_admin_session_path %></p>
+  </section>
+</main>

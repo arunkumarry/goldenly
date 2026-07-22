@@ -1,0 +1,12 @@
+<article id="<%= dom_id(offer) %>" class="offer-card">
+  <div class="offer-card-heading"><span class="care-partner-list-icon">✦</span><span class="status-pill success">Offered</span></div>
+  <h2><%= offer.service_request.service_catalog.name %></h2>
+  <p><%= offer.eligibility_snapshot["broad_location"].presence || "Broad location shared after eligibility check" %></p>
+  <dl>
+    <div><dt>Requested for</dt><dd><%= offer.service_request.preferred_time&.strftime("%-d %B · %-I %p") || "Flexible" %></dd></div>
+    <div><dt>Language</dt><dd><%= offer.eligibility_snapshot["preferred_language"].presence || "No preference" %></dd></div>
+    <div><dt>Estimated earnings</dt><dd><%= offer.eligibility_snapshot["estimated_earnings"] %></dd></div>
+  </dl>
+  <div class="offer-actions"><%= button_to "Accept request", accept_care_partners_offer_path(offer), method: :post, class: "primary-button" %><%= button_to "Decline", decline_care_partners_offer_path(offer), method: :post, class: "secondary-button" %></div>
+  <small>Expires <%= offer.expires_at&.strftime("%-I:%M %p") || "when matched" %>. First eligible acceptance wins.</small>
+</article>

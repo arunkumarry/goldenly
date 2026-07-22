@@ -2,13 +2,17 @@ module CarePartnerSessionAuthentication
   extend ActiveSupport::Concern
 
   included do
-    helper_method :current_care_partner_user, :care_partner_session_active?
+    helper_method :current_care_partner_user, :current_care_partner, :care_partner_session_active?
   end
 
   private
 
   def current_user
     current_care_partner_user
+  end
+
+  def current_care_partner
+    @current_care_partner ||= current_care_partner_user&.care_partner
   end
 
   def care_partner_session_active?

@@ -1,6 +1,6 @@
 class ServiceOffer < ApplicationRecord
   belongs_to :service_request
-  belongs_to :care_partner_account
+  belongs_to :care_partner
 
   enum :status, { offered: "offered", accepted: "accepted", declined: "declined", expired: "expired", matched: "matched" }, default: :offered
 

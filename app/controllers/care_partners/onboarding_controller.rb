@@ -3,42 +3,80 @@ class CarePartners::OnboardingController < CarePartners::BaseController
 
   def show
     @step = requested_step
+    return if progress.allows?(@step)
+
+    redirect_to care_partners_onboarding_path(step: progress.unlocked_step), alert: "Complete the current step before continuing."
   end
 
   def update
     @step = requested_step
-    CarePartnerAccount.transaction do
+    unless progress.allows?(@step)
+      redirect_to care_partners_onboarding_path(step: progress.unlocked_step), alert: "Complete the current step before continuing."
+      return
+    end
+
+    CarePartner.transaction do
       @profile.assign_attributes(profile_attributes)
-      @account.assign_attributes(account_attributes)
+      @account.assign_attributes(care_partner_attributes)
       apply_declarations
       @profile.save!
       @account.save!
-      @account.update!(onboarding_step: [ @step + 1, 4 ].min)
+      @account.activate_if_ready!
+      progress.advance!
     end
-    redirect_to care_partners_onboarding_path(step: [ @step + 1, 4 ].min), notice: "Draft saved. Continue when you are ready."
+    @unlocked_step = progress.unlocked_step
+    if @unlocked_step > @step
+      redirect_to care_partners_onboarding_path(step: @unlocked_step), notice: "Step #{@step} complete. Continue when you are ready."
+    elsif progress.complete?(@step)
+      redirect_to care_partners_onboarding_path(step: @step), notice: "Review details saved. Submit when you are ready."
+    else
+      redirect_to care_partners_onboarding_path(step: @step), alert: "Save the remaining details before continuing: #{progress.missing_fields_for(@step).to_sentence}."
+    end
   rescue ActiveRecord::RecordInvalid
+    @unlocked_step = progress.unlocked_step
     render :show, status: :unprocessable_content
   end
 
   def submit
-    CarePartnerApplicationSubmission.new(@account, actor: current_user).submit!
+    unless progress.allows?(4)
+      redirect_to care_partners_onboarding_path(step: progress.unlocked_step), alert: "Complete the earlier onboarding steps before submitting."
+      return
+    end
+
+    CarePartner.transaction do
+      @account.assign_attributes(care_partner_attributes)
+      apply_declarations
+      @account.save!
+      progress.advance!
+      CarePartnerApplicationSubmission.new(@account, actor: current_user).submit!
+    end
     redirect_to care_partners_root_path, notice: "Your application is with Goldenly’s human review team."
   rescue CarePartnerApplicationSubmission::IncompleteApplication => error
     redirect_to care_partners_onboarding_path(step: 4), alert: error.message
+  rescue ActiveRecord::RecordInvalid => error
+    redirect_to care_partners_onboarding_path(step: 4), alert: error.record.errors.full_messages.to_sentence
   end
 
   private
 
   def load_records
-    @account = current_care_partner_account
+    @account = current_care_partner
     @profile = @account.profile
-    @document = @account.verification_documents.new(country_code: @profile.country_code)
-    @credential = @account.credentials.new
-    @care_partner_service = @account.care_partner_services.new
+    @progress = CarePartnerOnboardingProgress.new(@account)
+    @unlocked_step = @progress.unlocked_step
+    # Build the form objects independently so they do not get mixed into the
+    # persisted-record lists rendered on steps two and three.
+    @document = CarePartnerVerificationDocument.new(care_partner_id: @account.id, country_code: @profile.country_code)
+    @credential = CarePartnerCredential.new(care_partner_id: @account.id)
+    @care_partner_service = CarePartnerService.new(care_partner_id: @account.id, max_concurrent_visits: 1)
   end
 
   def requested_step
-    params.fetch(:step, @account.onboarding_step).to_i.clamp(1, 4)
+    params.fetch(:step, @unlocked_step).to_i.clamp(1, 4)
+  end
+
+  def progress
+    @progress
   end
 
   def profile_attributes
@@ -52,8 +90,8 @@ class CarePartners::OnboardingController < CarePartners::BaseController
     values
   end
 
-  def account_attributes
-    params.fetch(:care_partner_account, {}).permit(:payout_method_summary).to_h
+  def care_partner_attributes
+    params.fetch(:care_partner, {}).permit(:payout_method_summary).to_h
   end
 
   def apply_declarations

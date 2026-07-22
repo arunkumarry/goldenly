@@ -1,6 +1,6 @@
 class ServiceAssignment < ApplicationRecord
   belongs_to :service_request
-  belongs_to :care_partner_account
+  belongs_to :care_partner
   has_one :visit_submission, dependent: :destroy
   has_one :earnings_ledger_entry, dependent: :destroy
 

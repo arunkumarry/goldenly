@@ -63,6 +63,16 @@ Rails.application.routes.draw do
     resources :earnings, only: :index
   end
 
+  namespace :admin do
+    root "dashboard#index"
+    resource :session, only: %i[new create destroy], controller: "sessions" do
+      get :verify
+      post :verify, to: "sessions#confirm"
+    end
+    resources :members, only: %i[index show]
+    resources :providers, only: %i[index show update]
+  end
+
   namespace :moderation do
     resources :care_partner_applications, only: %i[index show update]
     resources :earnings, only: %i[index update]

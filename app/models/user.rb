@@ -9,7 +9,7 @@ class User < ApplicationRecord
   has_many :profile_invitations_sent, class_name: "ProfileInvitation", foreign_key: :invited_by_id, dependent: :destroy
   has_many :consent_records, class_name: "ConsentRecord", foreign_key: :actor_user_id, dependent: :nullify
   has_many :audit_events, class_name: "AuditEvent", foreign_key: :actor_user_id, dependent: :nullify
-  has_one :care_partner_account, dependent: :destroy
+  has_one :care_partner, dependent: :destroy
   has_many :moderator_reviews, foreign_key: :reviewer_id, dependent: :restrict_with_error
 
   normalizes :email_address, with: ->(email) { email&.strip&.downcase }
@@ -42,6 +42,13 @@ class User < ApplicationRecord
 
   def can_manage_care_partner_payouts?
     operations_manager? || finance_reviewer?
+  end
+
+  # The admin workspace has its own session, but uses the existing staff roles
+  # so a normal member or Care Partner account can never gain access by simply
+  # visiting an admin URL.
+  def can_access_admin_panel?
+    can_review_care_partners?
   end
 
   private

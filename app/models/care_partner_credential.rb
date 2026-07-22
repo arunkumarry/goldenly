@@ -1,5 +1,5 @@
 class CarePartnerCredential < ApplicationRecord
-  belongs_to :care_partner_account
+  belongs_to :care_partner
   belongs_to :service_catalog, optional: true
 
   enum :verification_status, { pending: "pending", approved: "approved", changes_requested: "changes_requested", rejected: "rejected" }, default: :pending
