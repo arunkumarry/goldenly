@@ -73,10 +73,12 @@ Rails.application.routes.draw do
     resources :providers, only: %i[index show update]
   end
 
-  namespace :moderation do
-    resources :care_partner_applications, only: %i[index show update]
-    resources :earnings, only: %i[index update]
-  end
+  # Legacy moderation URLs are intentionally read-only redirects. Provider
+  # reviews now require the separate admin session under /admin, never a Care
+  # Partner session. The former PATCH endpoints are not routed at all.
+  get "moderation/care_partner_applications", to: redirect("/admin/providers")
+  get "moderation/care_partner_applications/:id", to: redirect("/admin/providers/%{id}")
+  get "moderation/earnings", to: redirect("/admin")
 
   namespace :api do
     namespace :v1 do
