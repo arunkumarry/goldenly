@@ -17,7 +17,7 @@ end
 
 admin_accounts = [
   {
-    email_address: ENV.fetch("GOLDENLY_OPERATIONS_MANAGER_EMAIL", "opsmanager@goldenly.com"),
+    email_address: ENV.fetch("GOLDENLY_OPERATIONS_MANAGER_EMAIL", "goldenlyai@gmail.com"),
     full_name: "Goldenly Operations Manager"
   },
   {
