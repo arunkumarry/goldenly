@@ -9,6 +9,8 @@ class User < ApplicationRecord
   has_many :profile_invitations_sent, class_name: "ProfileInvitation", foreign_key: :invited_by_id, dependent: :destroy
   has_many :consent_records, class_name: "ConsentRecord", foreign_key: :actor_user_id, dependent: :nullify
   has_many :audit_events, class_name: "AuditEvent", foreign_key: :actor_user_id, dependent: :nullify
+  has_one :care_partner_account, dependent: :destroy
+  has_many :moderator_reviews, foreign_key: :reviewer_id, dependent: :restrict_with_error
 
   normalizes :email_address, with: ->(email) { email&.strip&.downcase }
   normalizes :phone_number, with: ->(phone) { phone&.strip }
@@ -17,6 +19,10 @@ class User < ApplicationRecord
   validates :email_address, uniqueness: true, allow_nil: true
   validates :phone_number, uniqueness: true, allow_nil: true
   validate :email_or_phone_present
+
+  enum :platform_role, {
+    member: "member", moderator: "moderator", operations_manager: "operations_manager", finance_reviewer: "finance_reviewer"
+  }, default: :member
 
   def identifier
     email_address || phone_number
@@ -28,6 +34,14 @@ class User < ApplicationRecord
 
   def care_profile_link_for(care_profile)
     active_care_profile_links.find_by(care_profile: care_profile)
+  end
+
+  def can_review_care_partners?
+    moderator? || operations_manager?
+  end
+
+  def can_manage_care_partner_payouts?
+    operations_manager? || finance_reviewer?
   end
 
   private

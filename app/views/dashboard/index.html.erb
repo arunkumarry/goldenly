@@ -36,7 +36,7 @@
           <% @reminders.each_with_index do |reminder, index| %><%= render "reminders/reminder", reminder: reminder, index: index %><% end %>
           <% if @reminders.empty? %><p class="empty-state">No reminders yet. <%= link_to "Create the first reminder", new_reminder_path %>.</p><% end %>
           <div class="request-list-heading"><p class="eyebrow">SERVICE REQUESTS</p><h3>Recent requests</h3></div>
-          <% @service_requests.each do |service_request| %><article class="schedule-item"><time><%= service_request.preferred_time ? service_request.preferred_time.strftime("%-d %b") : "Flexible" %></time><span class="timeline-dot"></span><div><strong><%= service_request.service_type %></strong><small><%= service_request.status.humanize %></small></div></article><% end %>
+          <% @service_requests.each do |service_request| %><article class="schedule-item"><time><%= service_request.preferred_time ? service_request.preferred_time.strftime("%-d %b") : "Flexible" %></time><span class="timeline-dot"></span><div><strong><%= service_request.service_type %></strong><small><%= service_request.status.humanize %></small></div><% if service_request.awaiting_confirmation? %><%= button_to "Confirm", service_request_path(service_request), method: :patch, params: { service_request: { status: "requested" } }, class: "secondary-button" %><% elsif service_request.submitted_for_confirmation? %><%= link_to "Confirm service", service_request_completion_path(service_request), class: "secondary-button" %><% end %></article><% end %>
           <% if @service_requests.empty? %><p class="empty-state">No service requests yet. <%= link_to "Request support", new_service_request_path %>.</p><% end %>
         </div>
       </section>

@@ -1,0 +1,43 @@
+<% content_for :title, "Care Partner overview · Goldenly" %>
+<main class="care-partner-workspace">
+  <%= render "care_partners/shared/sidebar" %>
+  <section class="care-partner-content">
+    <header class="care-partner-topbar">
+      <div><p class="eyebrow">CARE PARTNER WORKSPACE</p><h1>Welcome, <%= (@profile.display_name.presence || current_user.full_name).split.first %>.</h1><p>Keep your availability current and respond to the right care opportunities.</p></div>
+      <%= form_with url: care_partners_availability_path, method: :patch, class: "availability-toggle" do %>
+        <span>New requests</span>
+        <%= hidden_field_tag :availability_status, current_care_partner_account.available? ? "paused" : "available" %>
+        <%= submit_tag(current_care_partner_account.available? ? "Available" : "Paused", class: "availability-button #{current_care_partner_account.available? ? 'is-available' : ''}") %>
+      <% end %>
+    </header>
+
+    <section class="care-partner-hero">
+      <div><span class="status-pill <%= current_care_partner_account.active? ? 'success' : 'blue' %>"><%= current_care_partner_account.application_status.humanize %></span><h2><%= current_care_partner_account.active? ? "You’re ready to support members." : "Complete your Care Partner application." %></h2><p><%= current_care_partner_account.active? ? "Only suitable requests are shown, and member details remain protected until you accept." : "Your progress is saved securely. A Goldenly moderator makes every final approval decision." %></p><%= link_to(current_care_partner_account.active? ? "Manage services →" : "Continue application →", current_care_partner_account.active? ? care_partners_services_path : care_partners_onboarding_path, class: "care-partner-light-link") %></div>
+      <div class="care-partner-progress"><strong><%= @completion_percentage %>%</strong><span>application readiness</span><i><b style="width: <%= @completion_percentage %>%"></b></i></div>
+    </section>
+
+    <section class="care-partner-summary-grid">
+      <article><span>✦</span><div><small>Open opportunities</small><strong><%= @open_offers.count %></strong></div></article>
+      <article><span>◷</span><div><small>Active visits</small><strong><%= @assignments.count %></strong></div></article>
+      <article><span>◉</span><div><small>Available balance</small><strong><%= current_care_partner_account.earnings_ledger_entries.available.sum(:net_payout_cents) > 0 ? EarningsLedgerEntry::MoneyAmount.new(current_care_partner_account.earnings_ledger_entries.available.sum(:net_payout_cents), current_care_partner_account.earnings_ledger_entries.available.first&.currency || "USD") : "—" %></strong></div></article>
+      <article><span>▦</span><div><small>Approved services</small><strong><%= current_care_partner_account.approved_services.count %></strong></div></article>
+    </section>
+
+    <div class="care-partner-columns">
+      <section class="care-partner-panel">
+        <div class="care-partner-panel-heading"><div><p class="eyebrow">OPEN REQUESTS</p><h2>Suitable opportunities</h2></div><%= link_to "View all →", care_partners_offers_path %></div>
+        <% @open_offers.each do |offer| %>
+          <article class="care-partner-list-item"><span class="care-partner-list-icon">✦</span><div><strong><%= offer.service_request.service_catalog.name %></strong><small><%= offer.eligibility_snapshot["broad_location"] %> · <%= offer.service_request.preferred_time&.strftime("%-d %b, %-I %p") || "Flexible" %></small></div><em><%= offer.eligibility_snapshot["estimated_earnings"] %></em></article>
+        <% end %>
+        <% if @open_offers.empty? %><p class="empty-state">No matching requests yet. Keep your availability and service zones up to date.</p><% end %>
+      </section>
+      <section class="care-partner-panel">
+        <div class="care-partner-panel-heading"><div><p class="eyebrow">UPCOMING</p><h2>Your visits</h2></div><%= link_to "View all →", care_partners_assignments_path %></div>
+        <% @assignments.each do |assignment| %>
+          <%= link_to care_partners_assignment_path(assignment), class: "care-partner-list-item is-link" do %><span class="care-partner-list-icon">◷</span><div><strong><%= assignment.service_request.service_catalog.name %></strong><small><%= assignment.service_request.preferred_time&.strftime("%-d %b, %-I %p") || "Flexible" %> · <%= assignment.status.humanize %></small></div><b>→</b><% end %>
+        <% end %>
+        <% if @assignments.empty? %><p class="empty-state">Accepted visits will appear here with the details needed to deliver care.</p><% end %>
+      </section>
+    </div>
+  </section>
+</main>

@@ -2,8 +2,14 @@ class ServiceRequest < ApplicationRecord
   include BelongsToCareProfile
 
   belongs_to :service_catalog
+  has_many :service_offers, dependent: :destroy
+  has_one :service_assignment, dependent: :destroy
 
-  enum :status, { awaiting_confirmation: "awaiting_confirmation", requested: "requested", provider_assigned: "provider_assigned", completed: "completed", cancelled: "cancelled" }, default: :awaiting_confirmation
+  enum :status, {
+    awaiting_confirmation: "awaiting_confirmation", requested: "requested", provider_assigned: "provider_assigned",
+    checked_in: "checked_in", in_progress: "in_progress", submitted_for_confirmation: "submitted_for_confirmation",
+    confirmed: "confirmed", completed: "completed", disputed: "disputed", escalated: "escalated", cancelled: "cancelled"
+  }, default: :awaiting_confirmation
 
   validates :service_type, presence: true
   validate :service_catalog_is_available

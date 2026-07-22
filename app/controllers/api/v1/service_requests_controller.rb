@@ -19,7 +19,11 @@ class Api::V1::ServiceRequestsController < ActionController::API
         confirmed_at: Time.current
       )
     )
-    render json: { service_request: service_request_payload(request), message: "Your service request is confirmed. Provider matching is the next phase." }, status: :created
+    offers = CarePartnerMatching::OfferPublisher.new(request, actor: current_mobile_user).publish!
+    render json: {
+      service_request: service_request_payload(request),
+      message: offers.any? ? "Your service request is confirmed. Eligible Care Partners have been notified." : "Your service request is confirmed. We are finding a suitable Care Partner."
+    }, status: :created
   end
 
   private

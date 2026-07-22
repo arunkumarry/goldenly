@@ -16,8 +16,12 @@ class ServiceRequestsController < ApplicationController
 
   def update
     request = current_care_profile.service_requests.find(params[:id])
-    request.update!(status: params.require(:service_request).permit(:status).fetch(:status), confirmed_at: Time.current)
-    redirect_to dashboard_path, notice: "Service request confirmed. We’ll arrange the provider next."
+    return redirect_to(dashboard_path, alert: "Only saved requests can be confirmed.") unless request.awaiting_confirmation?
+
+    request.update!(status: :requested, confirmed_at: Time.current)
+    offers = CarePartnerMatching::OfferPublisher.new(request, actor: current_user).publish!
+    message = offers.any? ? "Service request confirmed. Eligible Care Partners have been notified." : "Service request confirmed. We are finding a suitable Care Partner."
+    redirect_to dashboard_path, notice: message
   end
 
   private

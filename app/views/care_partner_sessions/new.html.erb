@@ -1,0 +1,19 @@
+<% content_for :title, "Care Partner sign in · Goldenly" %>
+<main class="auth-page care-partner-auth-page">
+  <section class="workflow-card auth-card care-partner-auth-card">
+    <%= link_to provider_platform_path, class: "brand" do %><%= image_tag "goldenly-logo.png", class: "brand-logo", alt: "" %><span>Goldenly</span><% end %>
+    <p class="eyebrow">CARE PARTNER ACCESS</p>
+    <h1>Sign in to your Care Partner workspace</h1>
+    <p class="workflow-intro">This is separate from your member session. Use your email address or phone number to receive a secure code.</p>
+    <%= form_with url: care_partner_session_path, class: "workflow-form", data: { controller: "identifier", action: "submit->identifier#prepare" } do |form| %>
+      <div class="form-grid">
+        <%= render "shared/identifier_fields" %>
+        <p class="care-partner-auth-hint">New Care Partner? Add these two details before we send your first verification code.</p>
+        <%= form.label :full_name, "Full name (new Care Partner accounts only)" %><%= form.text_field :full_name, autocomplete: "name" %>
+        <%= form.label :country, "Country (new Care Partner accounts only)" %><%= form.text_field :country, placeholder: "India or United States" %>
+      </div>
+      <%= form.submit "Send Care Partner sign-in code", class: "primary-button" %>
+    <% end %>
+    <p class="auth-switch">Looking for your care dashboard? <%= link_to "Sign in as a member", new_session_path %></p>
+  </section>
+</main>

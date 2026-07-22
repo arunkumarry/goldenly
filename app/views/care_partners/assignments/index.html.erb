@@ -1,0 +1,11 @@
+<% content_for :title, "My visits · Goldenly" %>
+<main class="care-partner-workspace">
+  <%= render "care_partners/shared/sidebar" %>
+  <section class="care-partner-content">
+    <header class="care-partner-page-heading"><p class="eyebrow">MY VISITS</p><h1>Coordinate your confirmed visits</h1><p>Member contact, address, and care information are visible only for your accepted assignments.</p></header>
+    <section class="assignment-table">
+      <% @assignments.each do |assignment| %><%= link_to care_partners_assignment_path(assignment), class: "assignment-row" do %><span class="care-partner-list-icon">◷</span><div><strong><%= assignment.service_request.service_catalog.name %></strong><small><%= assignment.service_request.care_profile.full_name %> · <%= assignment.service_request.preferred_time&.strftime("%-d %B, %-I %p") || "Flexible" %></small></div><span class="status-pill <%= assignment.confirmed? ? 'success' : '' %>"><%= assignment.status.humanize %></span><b>→</b><% end %><% end %>
+    </section>
+    <% if @assignments.empty? %><section class="care-partner-empty"><span>◷</span><h2>Your visits will appear here</h2><p>Accept a suitable open request to see the information necessary to coordinate the service.</p><%= link_to "View open requests", care_partners_offers_path, class: "primary-button" %></section><% end %>
+  </section>
+</main>

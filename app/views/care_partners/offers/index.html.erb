@@ -1,0 +1,13 @@
+<% content_for :title, "Open requests · Goldenly" %>
+<main class="care-partner-workspace">
+  <%= render "care_partners/shared/sidebar" %>
+  <section class="care-partner-content">
+    <header class="care-partner-page-heading"><p class="eyebrow">OPEN REQUESTS</p><h1>Suitable care opportunities</h1><p>Before you accept, Goldenly only shares the service, broad location, time window, support needs, and estimated earnings.</p></header>
+    <section class="offer-grid">
+      <% @offers.each do |offer| %>
+        <article class="offer-card <%= offer.open? ? '' : 'is-closed' %>"><div class="offer-card-heading"><span class="care-partner-list-icon">✦</span><span class="status-pill <%= offer.open? ? 'success' : '' %>"><%= offer.status.humanize %></span></div><h2><%= offer.service_request.service_catalog.name %></h2><p><%= offer.eligibility_snapshot["broad_location"].presence || "Broad location shared after eligibility check" %></p><dl><div><dt>Requested for</dt><dd><%= offer.service_request.preferred_time&.strftime("%-d %B · %-I %p") || "Flexible" %></dd></div><div><dt>Language</dt><dd><%= offer.eligibility_snapshot["preferred_language"].presence || "No preference" %></dd></div><div><dt>Estimated earnings</dt><dd><%= offer.eligibility_snapshot["estimated_earnings"] %></dd></div></dl><% if offer.open? %><div class="offer-actions"><%= button_to "Accept request", accept_care_partners_offer_path(offer), method: :post, class: "primary-button" %><%= button_to "Decline", decline_care_partners_offer_path(offer), method: :post, class: "secondary-button" %></div><small>Expires <%= offer.expires_at&.strftime("%-I:%M %p") || "when matched" %>. First eligible acceptance wins.</small><% else %><small>This opportunity is no longer available.</small><% end %></article>
+      <% end %>
+    </section>
+    <% if @offers.empty? %><section class="care-partner-empty"><span>✦</span><h2>No open requests right now</h2><p>Keep your profile active, your service zones accurate, and your availability on when you’re ready for work.</p><%= link_to "Manage availability", care_partners_services_path, class: "primary-button" %></section><% end %>
+  </section>
+</main>
