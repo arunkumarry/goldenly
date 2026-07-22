@@ -1,98 +1,136 @@
 # Goldenly
 
-Goldenly is an AI-assisted care-coordination MVP for members: a Rails 8 Hotwire dashboard, versioned JSON API, PostgreSQL persistence layer, and an Expo companion.
+[Goldenly](https://goldenly-web-949146314151.asia-south1.run.app/) is a global, AI-assisted care-coordination platform for members, their families, and their trusted circles. It brings reminders, service requests, care information, profile access, and a voice-first mobile companion into one connected experience.
 
-## Included
+**Live app:** [https://goldenly-web-949146314151.asia-south1.run.app/](https://goldenly-web-949146314151.asia-south1.run.app/)
 
-- Care-profile dashboard: reminders, service requests, calendar, care activity, and trusted-circle access.
-- Mobile companion: profile switching, live reminders and service requests, voice-entry, and SOS.
-- API endpoints: `GET /api/v1/dashboard`, reminders, and service-request creation.
-- Consent-safe AI boundary: the assistant can interpret multilingual requests but cannot dispatch, notify, share data, or give clinical advice without a separate confirmation flow.
-- Central theme tokens in `app/assets/stylesheets/application.css` (the five requested colors are the top-level variables).
+## What Goldenly does
 
-## Run the web app
+- Creates member care profiles for oneself or someone else, including global address, country, region, city, coordinates, and preferred language.
+- Supports passwordless email or phone-number sign-up and sign-in with one-time verification codes.
+- Lets a coordinator switch between multiple member profiles without losing context.
+- Organizes reminders, recurring schedules, a calendar, appointments, medicines, documents, and care activity.
+- Supports service requests for medical health checkups, diagnostic services, household help, shopping, transport, companion visits, and digital assistance.
+- Lets families invite a trusted circle by email or phone number and manage profile-specific permissions.
+- Provides a responsive Rails web dashboard and an Expo mobile app for iOS and Android.
+- Uses Google Places for structured address capture and future-ready location/navigation support.
 
-The easiest local setup uses Docker and does not require PostgreSQL on your
-machine:
+## Goldenly AI voice agent
+
+Goldenly AI is currently mobile-first. Members can talk or type to ask about recorded care information, including reminders, medication schedules, appointments, and service requests.
+
+- English and Telugu voice interactions are supported for the hackathon experience.
+- The agent uses the active member profile as context.
+- It can ask follow-up questions to collect a requested service date, hour, and details before creating a service request.
+- Care actions require confirmation before a record is created or an emergency workflow is triggered.
+- The agent provides only basic wellbeing guidance; it does not diagnose, prescribe, or replace medical professionals.
+
+## Built with
+
+- Ruby on Rails 8, PostgreSQL, Hotwire, Turbo, and Stimulus
+- Expo and React Native for the iOS and Android mobile apps
+- RubyLLM and OpenAI for member-aware conversations and action planning
+- GPT-5.6 Luna for the Goldenly AI voice agent
+- Device speech recognition and text-to-speech for voice interactions
+- Twilio Verify for OTP authentication
+- Brevo SMTP for production email delivery
+- Google Maps Places API for global address search and location data
+- Docker, Artifact Registry, Cloud SQL, Secret Manager, and Google Cloud Run
+
+Goldenly was built with **Codex** and **GPT-5.6 Terra**.
+
+## Architecture
+
+```text
+Web dashboard (Rails + Hotwire) ─┐
+                                 ├── Rails API + service objects ── PostgreSQL / Cloud SQL
+Mobile app (Expo + React Native) ┘              │
+                                                ├── RubyLLM + GPT-5.6 Luna
+                                                ├── Twilio Verify
+                                                ├── Brevo SMTP
+                                                └── Google Places API
+```
+
+The Rails application uses service objects for integrations and workflow logic, model concerns for shared domain behaviour, and Turbo Frames/Streams with Stimulus for responsive server-rendered UI.
+
+## Local development
+
+### Prerequisites
+
+- Docker Desktop (recommended for the web app)
+- Node.js and npm for the mobile app
+- Xcode for iOS development and/or Android Studio for Android development
+
+### Web app
 
 ```sh
 docker compose up --build
 ```
 
-Open `http://localhost:3000`. The `web` container waits for PostgreSQL and creates
-or migrates the database on startup. Stop
-the stack with `docker compose down`; add `--volumes` to also remove local
-database data.
+Open [http://localhost:3000](http://localhost:3000). Mailpit is available locally at [http://localhost:8026](http://localhost:8026) for development email testing.
 
-Set the Twilio Verify environment variables from `.env.example` before using
-OTP sign-in or signup. Twilio Verify handles SMS and email verification; do not
-put Twilio credentials in source control.
+Copy `.env.example` to `.env` and supply only the integrations you want to test. Never commit `.env` files or provider credentials.
 
-To run Rails directly instead, start PostgreSQL locally, create a role that can
-create the `goldenly_development` database, then run:
+### Database setup
+
+For the Docker development environment:
 
 ```sh
-bin/rails db:prepare
-bin/rails server
+docker compose exec web bin/rails db:prepare
 ```
 
-## Configure AI
+For a clean local reset:
 
-Set `OPENAI_API_KEY` and `OPENAI_MODEL` in the Rails runtime environment. The assistant uses the Responses API only when both are present; otherwise it provides the safe local fallback, so onboarding and UI work without secrets. Keep the API key server-side only.
+```sh
+docker compose exec web bin/rails db:drop db:create db:migrate
+```
 
-## Run mobile
+### Mobile app
 
 ```sh
 cd mobile
 npm install
-npm start
 ```
 
-Set `EXPO_PUBLIC_API_URL` to the deployed Rails URL. The Expo app uses the authenticated care-profile API.
+Set `EXPO_PUBLIC_API_URL` in `mobile/.env` to the API base URL, then run:
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+```sh
+npx expo start
+```
 
-## Care-profile voice agent
+For a native iOS development build:
 
-Goldenly’s profile-scoped agent can answer from the active care profile’s recorded
-reminders and service requests in English or Telugu. It does not diagnose,
-prescribe, or alter treatment.
+```sh
+npx expo prebuild
+cd ios && pod install && cd ..
+npx expo run:ios --device
+```
 
-- A request can propose a reminder, health-support request, or emergency alert;
-  the user must explicitly confirm before Goldenly writes the record.
-- An emergency confirmation records the alert, selected location consent, and
-  trusted-circle recipient count. It provides a country-aware emergency call
-  link (for example, `112` in India). SMS/call dispatch to contacts and
-  hospitals is intentionally not claimed or sent in this hackathon version.
-- The mobile app uses the device’s speech-recognition service for voice-to-text
-  and keeps OpenAI credentials on the Rails server. The configured OpenAI
-  Responses model produces the care response when `OPENAI_API_KEY` and
-  `OPENAI_MODEL` are set; otherwise the safe local fallback remains available.
+For Android:
 
-## Local email verification
+```sh
+npx expo run:android
+```
 
-In development, email sign-in and signup codes are generated by Rails and sent
-to Mailpit. Start the stack with `docker compose up`; then open
-`http://localhost:8026` to view the test inbox and copy the verification code.
-Phone-number verification continues to use Twilio Verify.
+## Production deployment
 
-Things you may want to cover:
+Goldenly is containerized for Google Cloud Run. The web service runs behind Thruster, which listens on Cloud Run's public port and proxies to Puma on its internal port.
 
-* Ruby version
+- **Cloud Run service:** serves the Rails web app and API.
+- **Cloud Run migration job:** runs database preparation once per deployment; web instances do not run migrations at startup.
+- **Cloud SQL:** stores the primary and Solid Queue databases.
+- **Secret Manager:** stores Rails, database, SMTP, Twilio, OpenAI, and Google Maps credentials.
+- **Artifact Registry:** stores production container images.
 
-* System dependencies
+Set production secrets in Secret Manager and bind them to both the web service and migration job as required. Do not use Mailpit in production; configure a real SMTP provider such as Brevo instead.
 
-* Configuration
+## Safety and privacy
 
-* Database creation
+Goldenly is designed to coordinate care, not provide clinical diagnosis. Emergency actions and data sharing require user confirmation, and trusted-circle access is scoped to an individual member profile.
 
-* Database initialization
+## What's next
 
-* How to run the test suite
-
-* Services (job queues, cache servers, search engines, etc.)
-
-* Deployment instructions
-
-* ...
+- Care-provider onboarding, matching, availability, and request fulfillment
+- Production push notifications through APNs/Firebase configuration
+- Emergency contact dispatch, nearby hospital routing, and provider escalation
+- More languages, richer voice conversations, and wearable/health-device integrations with consent
