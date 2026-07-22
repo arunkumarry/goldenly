@@ -1,0 +1,24 @@
+<% content_for :title, "Visit details · Goldenly" %>
+<% request = @assignment.service_request %>
+<main class="care-partner-workspace">
+  <%= render "care_partners/shared/sidebar" %>
+  <section class="care-partner-content">
+    <%= link_to "← My visits", care_partners_assignments_path, class: "back-link" %>
+    <header class="care-partner-page-heading assignment-heading"><div><p class="eyebrow">CONFIRMED VISIT</p><h1><%= request.service_catalog.name %></h1><p><%= request.preferred_time&.strftime("%A, %-d %B · %-I %p") || "Flexible scheduling" %></p></div><span class="status-pill <%= @assignment.confirmed? ? 'success' : 'blue' %>"><%= @assignment.status.humanize %></span></header>
+    <div class="care-partner-two-column-page assignment-detail-grid">
+      <section class="care-partner-panel visit-details">
+        <div class="care-partner-panel-heading"><div><p class="eyebrow">MEMBER DETAILS</p><h2>What you need for this visit</h2></div></div>
+        <dl><div><dt>Member</dt><dd><%= request.care_profile.full_name %></dd></div><div><dt>Service address</dt><dd><%= request.care_profile.address.presence || [request.care_profile.city, request.care_profile.region, request.care_profile.country].compact_blank.to_sentence %></dd></div><div><dt>Coordinator contact</dt><dd><%= request.care_profile.phone_number.presence || "Use the Goldenly-approved contact channel" %></dd></div><div><dt>Preferred language</dt><dd><%= request.care_profile.preferred_language %></dd></div></dl>
+        <% if request.notes.present? %><div class="visit-notes"><strong>Service notes</strong><p><%= request.notes %></p></div><% end %>
+        <p class="privacy-callout">Use member information only to deliver this assigned service. Do not share it outside Goldenly or add unsupported clinical recommendations.</p>
+      </section>
+      <section class="care-partner-panel visit-actions">
+        <p class="eyebrow">VISIT STATUS</p><h2>Record progress</h2>
+        <% if @assignment.assigned? %><%= button_to "Check in", check_in_care_partners_assignment_path(@assignment), method: :patch, class: "primary-button" %><% elsif @assignment.checked_in? %><%= button_to "Start visit", start_care_partners_assignment_path(@assignment), method: :patch, class: "primary-button" %><% elsif @assignment.in_progress? %><p>Your visit is in progress. Submit the factual completion record when finished.</p><% elsif @assignment.submitted_for_confirmation? %><p>Completion is with the member or coordinator for confirmation. The payout remains pending until they actively confirm.</p><% elsif @assignment.confirmed? %><p>Visit confirmed. Earnings are available for Goldenly’s manual payout review.</p><% elsif @assignment.disputed? || @assignment.escalated? %><p>This visit needs Goldenly operations review. Earnings are on hold.</p><% end %>
+      </section>
+    </div>
+    <% if @assignment.in_progress? || @assignment.checked_in? || @assignment.assigned? %>
+      <section class="care-partner-form-card visit-completion-form"><p class="eyebrow">COMPLETE VISIT</p><h2>Submit a factual service record</h2><p>Only submit observations and follow-up facts within your authorised scope.</p><%= form_with url: submit_completion_care_partners_assignment_path(@assignment), method: :patch, scope: :visit_submission, class: "care-partner-form" do |form| %><div class="checklist-grid"><label><%= check_box_tag "visit_submission[checklist][member_present]", "yes" %> Member or coordinator present</label><label><%= check_box_tag "visit_submission[checklist][service_delivered]", "yes" %> Agreed service delivered</label><label><%= check_box_tag "visit_submission[checklist][follow_up_shared]", "yes" %> Follow-up shared where needed</label></div><div class="care-partner-form-grid"><%= form.label :notes, "Visit notes" %><%= form.text_area :notes, rows: 5, placeholder: "Factual service record" %><%= form.label :evidence, "Evidence links (one per line, optional)" %><%= form.text_area :evidence, rows: 3, placeholder: "https://…" %><%= form.label :follow_up_needed, "Follow-up or escalation details" %><%= form.text_area :follow_up_needed, rows: 3 %><label class="declaration"><%= form.check_box :escalation %> Escalate this visit to Goldenly operations and hold payout.</label></div><%= form.submit "Submit for member confirmation", class: "primary-button" %><% end %></section>
+    <% end %>
+  </section>
+</main>

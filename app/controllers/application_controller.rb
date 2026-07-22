@@ -7,7 +7,7 @@ class ApplicationController < ActionController::Base
 
   before_action :require_authentication
 
-  helper_method :current_user, :current_care_profile, :current_care_profile_link, :navigation_items, :coordinator_mode?
+  helper_method :current_user, :current_care_partner_user, :current_care_profile, :current_care_profile_link, :navigation_items, :coordinator_mode?, :care_partner_navigation_items
 
   private
 
@@ -22,6 +22,17 @@ class ApplicationController < ActionController::Base
       [ "Add a person", new_care_profile_path, "＋" ],
       [ "Trusted circle", trusted_circle_path, "♧" ],
       [ "My profile", edit_profile_path, "◉" ]
+    ]
+  end
+
+  def care_partner_navigation_items
+    [
+      [ "Overview", care_partners_root_path, "⌂" ],
+      [ "Open requests", care_partners_offers_path, "✦" ],
+      [ "My visits", care_partners_assignments_path, "◷" ],
+      [ "Services & availability", care_partners_services_path, "▦" ],
+      [ "Earnings", care_partners_earnings_path, "◉" ],
+      [ "My application", care_partners_onboarding_path, "▤" ]
     ]
   end
 
@@ -44,6 +55,10 @@ class ApplicationController < ActionController::Base
 
   def current_user
     @current_user ||= User.find_by(id: session[:user_id]) if session[:user_id]
+  end
+
+  def current_care_partner_user
+    @current_care_partner_user ||= User.find_by(id: session[:care_partner_user_id]) if session[:care_partner_user_id]
   end
 
   def require_authentication

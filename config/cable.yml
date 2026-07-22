@@ -5,7 +5,9 @@ test:
   adapter: test
 
 production:
-  # Goldenly currently uses request/response Turbo Streams rather than
-  # broadcast channels. Avoid introducing Redis until real-time broadcasts
-  # are needed in production.
-  adapter: async
+  adapter: solid_cable
+  connects_to:
+    database:
+      writing: cable
+  polling_interval: 0.1.seconds
+  message_retention: 1.day

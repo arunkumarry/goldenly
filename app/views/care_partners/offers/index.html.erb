@@ -1,0 +1,39 @@
+<% content_for :title, "Open requests · Goldenly" %>
+<main class="care-partner-workspace">
+  <%= render "care_partners/shared/sidebar" %>
+  <section class="care-partner-content">
+    <%= turbo_stream_from [current_care_partner, :open_offers] %>
+    <header class="care-partner-page-heading"><p class="eyebrow">OPEN REQUESTS</p><h1>Suitable care opportunities</h1><p>Before you accept, Goldenly only shares the service, broad location, time window, support needs, and estimated earnings.</p></header>
+    <section id="open-offers" class="offer-grid">
+      <% @offers.each do |offer| %>
+        <%= render "care_partners/offers/offer", offer: offer %>
+      <% end %>
+    </section>
+    <% if @offers.empty? %>
+      <section class="care-partner-empty">
+        <span>✦</span>
+        <% if current_care_partner.approved? %>
+          <h2>Your application is approved</h2>
+          <p>Activation is pending final setup: an approved service and payout details. Open requests appear once your account is active.</p>
+          <%= link_to "View application", care_partners_onboarding_path, class: "primary-button" %>
+        <% elsif !current_care_partner.active? %>
+          <h2>Your application is awaiting approval</h2>
+          <p>Open requests appear after a Goldenly reviewer approves your Care Partner application and service scope.</p>
+          <%= link_to "View application", care_partners_onboarding_path, class: "primary-button" %>
+        <% elsif current_care_partner.approved_services.none? %>
+          <h2>Your services are awaiting approval</h2>
+          <p>Open requests will appear when at least one of your services has been approved.</p>
+          <%= link_to "View services", care_partners_services_path, class: "primary-button" %>
+        <% elsif current_care_partner.paused? %>
+          <h2>New requests are paused</h2>
+          <p>Turn on availability from your overview to receive matching service requests.</p>
+          <%= link_to "Manage availability", care_partners_root_path, class: "primary-button" %>
+        <% else %>
+          <h2>No matching requests right now</h2>
+          <p>Goldenly matches approved services with the member’s requested service, area, availability, and language needs.</p>
+          <%= link_to "Manage services", care_partners_services_path, class: "primary-button" %>
+        <% end %>
+      </section>
+    <% end %>
+  </section>
+</main>

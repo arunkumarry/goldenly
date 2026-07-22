@@ -1,0 +1,15 @@
+<aside class="sidebar care-partner-sidebar" aria-label="Care Partner navigation">
+  <%= link_to care_partners_root_path, class: "brand" do %><%= image_tag "goldenly-logo.png", class: "brand-logo", alt: "" %><span>Goldenly</span><% end %>
+  <p class="brand-tagline">Care Partner workspace</p>
+  <div class="care-partner-switch">CARE PARTNER</div>
+  <nav class="main-nav">
+    <% care_partner_navigation_items.each do |label, path, icon| %>
+      <%= link_to path, class: "nav-link #{current_page?(path) ? 'active' : ''}" do %><span aria-hidden="true"><%= icon %></span><%= label %><% end %>
+    <% end %>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="avatar small"><%= current_user.full_name.first %></div>
+    <div><strong><%= current_user.full_name %></strong><span>Care Partner</span></div>
+    <%= button_to "Sign out", care_partner_session_path, method: :delete, class: "more-button" %>
+  </div>
+</aside>

@@ -1,0 +1,19 @@
+<aside class="sidebar admin-sidebar" aria-label="Admin navigation">
+  <%= link_to admin_root_path, class: "brand" do %>
+    <%= image_tag "goldenly-logo.png", class: "brand-logo", alt: "" %><span>Goldenly</span>
+  <% end %>
+  <p class="brand-tagline">Admin workspace</p>
+  <div class="admin-switch">ADMIN</div>
+  <nav class="main-nav">
+    <% admin_navigation_items.each do |label, path, icon| %>
+      <%= link_to path, class: "nav-link #{current_page?(path) ? 'active' : ''}" do %>
+        <span aria-hidden="true"><%= icon %></span><%= label %>
+      <% end %>
+    <% end %>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="avatar small"><%= current_admin_user.full_name.first %></div>
+    <div><strong><%= current_admin_user.full_name %></strong><span>Admin</span></div>
+    <%= button_to "Sign out", admin_session_path, method: :delete, class: "more-button" %>
+  </div>
+</aside>

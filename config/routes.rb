@@ -21,13 +21,64 @@ Rails.application.routes.draw do
   get "places/:place_id", to: "places#show", as: :place
   resources :care_profiles, only: %i[new create edit update]
   resources :reminders, only: %i[new create update]
-  resources :service_requests, only: %i[new create update]
+  resources :service_requests, only: %i[new create update] do
+    resource :completion, only: %i[show update], controller: "service_request_completions"
+  end
   get "trusted-circle", to: "trusted_circle#index", as: :trusted_circle
   resources :profile_invitations, only: %i[create destroy]
   resources :care_profile_links, only: %i[update destroy]
   get "claim/:token", to: "profile_claims#show", as: :claim_profile
   post "claim/:token/request-code", to: "profile_claims#request_code", as: :claim_profile_request_code
   post "claim/:token", to: "profile_claims#create"
+
+  scope "care-partner", as: "care_partner" do
+    resource :session, controller: "care_partner_sessions", only: %i[new create destroy] do
+      get :verify
+      post :verify, to: "care_partner_sessions#confirm"
+    end
+  end
+
+  namespace :care_partners, path: "care-partner" do
+    root "dashboard#index"
+    resource :onboarding, controller: "onboarding", only: %i[show update] do
+      post :submit
+    end
+    patch "availability", to: "dashboard#availability", as: :availability
+    resources :documents, only: %i[create destroy]
+    resources :credentials, only: %i[create destroy]
+    resources :services, only: %i[index create update destroy]
+    resources :offers, only: :index do
+      member do
+        post :accept
+        post :decline
+      end
+    end
+    resources :assignments, only: %i[index show] do
+      member do
+        patch :check_in
+        patch :start
+        patch :submit_completion
+      end
+    end
+    resources :earnings, only: :index
+  end
+
+  namespace :admin do
+    root "dashboard#index"
+    resource :session, only: %i[new create destroy], controller: "sessions" do
+      get :verify
+      post :verify, to: "sessions#confirm"
+    end
+    resources :members, only: %i[index show]
+    resources :providers, only: %i[index show update]
+  end
+
+  # Legacy moderation URLs are intentionally read-only redirects. Provider
+  # reviews now require the separate admin session under /admin, never a Care
+  # Partner session. The former PATCH endpoints are not routed at all.
+  get "moderation/care_partner_applications", to: redirect("/admin/providers")
+  get "moderation/care_partner_applications/:id", to: redirect("/admin/providers/%{id}")
+  get "moderation/earnings", to: redirect("/admin")
 
   namespace :api do
     namespace :v1 do

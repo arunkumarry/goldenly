@@ -1,0 +1,18 @@
+<div class="full care-partner-address-fields" data-controller="address-autocomplete">
+  <%= label_tag "care_partner_profile_address", "Residential address" %>
+  <%= text_field_tag "care_partner_profile[address]", profile.address, required: true, autocomplete: "street-address", placeholder: "Start typing an address", data: { address_autocomplete_target: "input", action: "input->address-autocomplete#search" } %>
+  <div class="address-results" data-address-autocomplete-target="results"></div>
+
+  <div class="care-partner-address-components">
+    <div><%= label_tag "care_partner_profile_city", "City" %><%= text_field_tag "care_partner_profile[city]", profile.city, required: true, autocomplete: "address-level2", data: { address_autocomplete_target: "city" } %></div>
+    <div><%= label_tag "care_partner_profile_region", "State / region" %><%= text_field_tag "care_partner_profile[region]", profile.region, required: true, autocomplete: "address-level1", data: { address_autocomplete_target: "region" } %></div>
+    <div><%= label_tag "care_partner_profile_country", "Country" %><%= text_field_tag "care_partner_profile[country]", profile.country, required: true, autocomplete: "country-name", data: { address_autocomplete_target: "country" } %></div>
+    <div><%= label_tag "care_partner_profile_postal_code", "Postal code" %><%= text_field_tag "care_partner_profile[postal_code]", profile.postal_code, autocomplete: "postal-code", data: { address_autocomplete_target: "postalCode" } %></div>
+  </div>
+
+  <%= hidden_field_tag "care_partner_profile[country_code]", profile.country_code, data: { address_autocomplete_target: "countryCode" } %>
+  <%= hidden_field_tag "care_partner_profile[google_place_id]", profile.google_place_id, data: { address_autocomplete_target: "placeId" } %>
+  <%= hidden_field_tag "care_partner_profile[latitude]", profile.latitude, data: { address_autocomplete_target: "latitude" } %>
+  <%= hidden_field_tag "care_partner_profile[longitude]", profile.longitude, data: { address_autocomplete_target: "longitude" } %>
+  <label class="declaration"><%= check_box_tag "care_partner_profile[location_consent]", "1", profile.location_consent %> I consent to use this location to match appropriate service requests.</label>
+</div>

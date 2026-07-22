@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "Goldenly Care Partner" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="/icon.png">
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+  <body class="app-shell care-partner-shell">
+    <% if current_care_partner %>
+      <%= turbo_stream_from [current_care_partner, :offer_notifications] %>
+      <div id="offer-notifications" class="offer-notifications" aria-live="polite"></div>
+    <% end %>
+    <% if notice %><p class="flash-message"><%= notice %></p><% end %>
+    <% if alert %><p class="flash-message flash-alert"><%= alert %></p><% end %>
+    <%= yield %>
+  </body>
+</html>

@@ -1,0 +1,36 @@
+<% content_for :title, "#{@member.full_name} · Goldenly Admin" %>
+
+<main class="admin-workspace">
+  <%= render "admin/shared/sidebar" %>
+
+  <section class="admin-content">
+    <%= link_to "← Members", admin_members_path, class: "back-link" %>
+    <header class="admin-page-heading">
+      <p class="eyebrow">MEMBER RECORD</p>
+      <h1><%= @member.full_name %></h1>
+      <p>Account created <%= @member.created_at.to_fs(:long) %>. This is a read-only operational view.</p>
+    </header>
+
+    <div class="admin-columns">
+      <section class="admin-panel">
+        <p class="eyebrow">ACCOUNT DETAILS</p><h2>Contact and location</h2>
+        <dl class="admin-details">
+          <div><dt>Email</dt><dd><%= @member.email_address || "—" %></dd></div>
+          <div><dt>Phone</dt><dd><%= @member.phone_number || "—" %></dd></div>
+          <div><dt>Address</dt><dd><%= @member.address || "—" %></dd></div>
+          <div><dt>Location</dt><dd><%= [@member.city, @member.region, @member.country].compact_blank.to_sentence.presence || "—" %></dd></div>
+          <div><dt>Verified</dt><dd><%= @member.verified_at ? @member.verified_at.to_fs(:long) : "Not verified" %></dd></div>
+        </dl>
+      </section>
+
+      <section class="admin-panel">
+        <p class="eyebrow">CARE PROFILES</p><h2>People they coordinate</h2>
+        <% @care_profiles.each do |profile| %>
+          <article class="admin-record-row"><div><strong><%= profile.full_name %></strong><small><%= profile.relationship_to_user.humanize %> · <%= profile.preferred_language %> · <%= profile.country %></small></div><span class="status-pill"><%= profile.state.humanize %></span></article>
+          <% if profile.service_requests.any? %><p class="admin-subnote"><%= pluralize(profile.service_requests.size, "service request") %></p><% end %>
+        <% end %>
+        <% if @care_profiles.empty? %><p class="empty-state">This member has not created a care profile yet.</p><% end %>
+      </section>
+    </div>
+  </section>
+</main>

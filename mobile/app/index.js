@@ -475,6 +475,7 @@ export default function Home() {
     finally { setSosBusy(false); }
   };
   const callPhone = (phone) => Linking.openURL(`tel:${phone.replace(/[^+\d]/g, "")}`);
+  const emailProvider = (email) => Linking.openURL(`mailto:${email}`);
 
   const renderToday = () => <>
     <Text style={styles.pageTitle}>Today</Text><Text style={styles.date}>{date}</Text>
@@ -495,13 +496,31 @@ export default function Home() {
     {!careDataBusy && serviceCatalogs.length === 0 ? <Text style={styles.detail}>Services are loading. Please try again shortly.</Text> : null}
   </>;
 
+  const renderAssignedProvider = (provider) => {
+    if (!provider) return null;
+
+    return <View style={styles.providerCard}>
+      <View style={styles.contactAvatar}><Text style={styles.contactAvatarText}>{provider.name?.[0] || "G"}</Text></View>
+      <View style={styles.flex}>
+        <Text style={styles.providerLabel}>ASSIGNED CARE PARTNER</Text>
+        <Text style={styles.cardTitle}>{provider.name}</Text>
+        {provider.location ? <Text style={styles.detail}>{provider.location}</Text> : null}
+        {provider.phone_number ? <Text style={styles.detail}>{provider.phone_number}</Text> : provider.email_address ? <Text style={styles.detail}>{provider.email_address}</Text> : null}
+      </View>
+      <View style={styles.providerActions}>
+        {provider.phone_number ? <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Call ${provider.name}`} onPress={() => callPhone(provider.phone_number)} style={styles.providerAction}><Text style={styles.providerActionText}>Call</Text></TouchableOpacity> : null}
+        {provider.email_address ? <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Email ${provider.name}`} onPress={() => emailProvider(provider.email_address)} style={styles.providerAction}><Text style={styles.providerActionText}>Email</Text></TouchableOpacity> : null}
+      </View>
+    </View>;
+  };
+
   const renderCare = () => <>
     <Text style={styles.pageTitle}>My care</Text><Text style={styles.date}>Your health and care information</Text>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.segmentRow}>{["Medicines", "Appointments", "Documents", "Services"].map((item) => <TouchableOpacity key={item} onPress={() => setCareSection(item)} style={[styles.segment, careSection === item && styles.segmentActive]}><Text style={[styles.segmentText, careSection === item && styles.segmentTextActive]}>{item}</Text></TouchableOpacity>)}</ScrollView>
     {careSection === "Medicines" && <View style={styles.infoCard}><Text style={styles.cardTitle}>Medication records</Text>{careDashboard.reminders.filter((reminder) => /medicine|tablet|medication|dose/i.test(reminder.title)).map((reminder) => <View key={reminder.id} style={styles.careRecord}><Text style={styles.cardTitle}>{reminder.title}</Text><Text style={styles.detail}>{dateTimeLabel(reminder.scheduled_for)}</Text></View>)}{!careDashboard.reminders.some((reminder) => /medicine|tablet|medication|dose/i.test(reminder.title)) ? <Text style={styles.detail}>No medication records have been added for this care profile yet.</Text> : null}<Text style={styles.safeNote}>Goldenly does not provide medication or dosage advice.</Text></View>}
     {careSection === "Appointments" && <View style={styles.infoCard}><Text style={styles.cardTitle}>Appointments and reminders</Text>{[...careDashboard.reminders, ...careDashboard.service_requests.filter((request) => request.preferred_time)].sort((left, right) => new Date(left.scheduled_for || left.preferred_time) - new Date(right.scheduled_for || right.preferred_time)).map((item) => <View key={`${item.scheduled_for ? "reminder" : "service"}-${item.id}`} style={styles.careRecord}><Text style={styles.cardTitle}>{item.service_name || item.service_type || item.title}</Text><Text style={styles.detail}>{dateTimeLabel(item.scheduled_for || item.preferred_time)} · {(item.status || "scheduled").replaceAll("_", " ")}</Text></View>)}{!careDashboard.reminders.length && !careDashboard.service_requests.some((request) => request.preferred_time) ? <Text style={styles.detail}>No appointments or reminders have been recorded yet.</Text> : null}</View>}
     {careSection === "Documents" && <View style={styles.infoCard}><Text style={styles.cardTitle}>Medical documents</Text><Text style={styles.detail}>No documents have been added for this care profile yet.</Text><Text style={styles.safeNote}>Document summaries are informational, not medical advice.</Text></View>}
-    {careSection === "Services" && <View style={styles.infoCard}><Text style={styles.cardTitle}>Service requests</Text>{careDashboard.service_requests.map((request) => <View key={request.id} style={styles.careRecord}><Text style={styles.cardTitle}>{request.service_name || request.service_type}</Text><Text style={styles.detail}>{dateTimeLabel(request.preferred_time)} · {request.status.replaceAll("_", " ")}</Text>{request.notes ? <Text style={styles.safeNote}>{request.notes}</Text> : null}</View>)}{!careDashboard.service_requests.length ? <Text style={styles.detail}>No service requests have been recorded for this care profile yet.</Text> : null}</View>}
+    {careSection === "Services" && <View style={styles.infoCard}><Text style={styles.cardTitle}>Service requests</Text>{careDashboard.service_requests.map((request) => <View key={request.id} style={styles.careRecord}><Text style={styles.cardTitle}>{request.service_name || request.service_type}</Text><Text style={styles.detail}>{dateTimeLabel(request.preferred_time)} · {request.status.replaceAll("_", " ")}</Text>{renderAssignedProvider(request.assigned_provider)}{request.notes ? <Text style={styles.safeNote}>{request.notes}</Text> : null}</View>)}{!careDashboard.service_requests.length ? <Text style={styles.detail}>No service requests have been recorded for this care profile yet.</Text> : null}</View>}
   </>;
 
   const renderCircle = () => <>
@@ -566,6 +585,11 @@ const brandingStyles = StyleSheet.create({
 styles.voiceStatus = { padding: 14, borderRadius: 14, backgroundColor: "#e5f5ed" };
 styles.voiceStatusTitle = { color: colors.success, fontSize: 14, fontWeight: "800" };
 styles.signOutText = { color: colors.muted, fontSize: 10, fontWeight: "700", textAlign: "right", marginTop: 4 };
+styles.providerCard = { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 11, padding: 11, borderRadius: 12, borderWidth: 1, borderColor: "#cfe5e3", backgroundColor: "#f2faf8" };
+styles.providerLabel = { color: colors.blue, fontSize: 9, fontWeight: "900", letterSpacing: 1, marginBottom: 2 };
+styles.providerActions = { gap: 6, alignItems: "flex-end" };
+styles.providerAction = { minWidth: 54, alignItems: "center", paddingHorizontal: 9, paddingVertical: 7, borderRadius: 8, backgroundColor: colors.blue };
+styles.providerActionText = { color: "white", fontSize: 10, fontWeight: "800" };
 
 // Voice-first assistant conversation styles.
 styles.chatScreen = { flex: 1, backgroundColor: "#f5f8f7" };

@@ -1,0 +1,25 @@
+<% content_for :title, "Services & availability · Goldenly" %>
+<main class="care-partner-workspace">
+  <%= render "care_partners/shared/sidebar" %>
+  <section class="care-partner-content">
+    <header class="care-partner-page-heading"><p class="eyebrow">SERVICE SCOPE</p><h1>Services and availability</h1><p>Goldenly only matches you to services that have been approved for your profile. Pause new work at any time from the overview.</p></header>
+    <div class="care-partner-two-column-page">
+      <section class="care-partner-panel">
+        <div class="care-partner-panel-heading"><div><p class="eyebrow">YOUR SERVICES</p><h2>Approved scope</h2></div></div>
+        <% @care_partner_services.each do |service| %>
+          <article class="scope-item"><div><strong><%= service.service_catalog.name %></strong><small><%= service.status.humanize %> · <%= CarePartnerServiceEnrollment.credential_required_for?(service.service_catalog) ? "Professional credential supplied" : "Non-clinical service" %></small><p><%= service.coverage_label.presence || "No zone limits supplied" %> · <%= service.languages.presence&.to_sentence || "Languages not supplied" %> · <%= service.availability["days"].presence&.to_sentence || "Flexible availability" %></p></div><%= button_to "Remove", care_partners_service_path(service), method: :delete, class: "text-button" %></article>
+        <% end %>
+        <% if @care_partner_services.empty? %><p class="empty-state">Choose services in the form to begin. They are inactive until a moderator approves them.</p><% end %>
+      </section>
+      <section class="care-partner-form-card">
+        <% if @care_partner_services.size >= CarePartnerService::MAXIMUM_SERVICES_PER_PARTNER %>
+          <p class="eyebrow">SERVICE LIMIT REACHED</p><h2>Your service scope is complete</h2><p>You can offer up to <%= CarePartnerService::MAXIMUM_SERVICES_PER_PARTNER %> services. Remove one before adding another.</p>
+        <% else %>
+          <p class="eyebrow">ADD SERVICE</p><h2>Where can you help?</h2><p>Use broad service zones. Specific member details are never shown before a successful match.</p>
+          <%= render "shared/errors", record: @care_partner_service %>
+          <%= render "care_partners/services/service_enrollment_form", care_partner_service: @care_partner_service, service_catalogs: @available_service_catalogs, profile: current_care_partner.profile, submit_label: "Add service", return_to_onboarding: false %>
+        <% end %>
+      </section>
+    </div>
+  </section>
+</main>

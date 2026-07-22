@@ -1,0 +1,37 @@
+<% content_for :title, "Providers · Goldenly Admin" %>
+
+<main class="admin-workspace">
+  <%= render "admin/shared/sidebar" %>
+
+  <section class="admin-content">
+    <header class="admin-page-heading">
+      <p class="eyebrow">CARE PARTNERS</p>
+      <h1>Provider applications</h1>
+      <p>Approve only after reviewing the submitted identity evidence and services. Approval activates an otherwise complete Care Partner for matching requests.</p>
+    </header>
+
+    <nav class="admin-filter-tabs" aria-label="Filter provider applications">
+      <%= link_to "All (#{@provider_counts.values.sum})", admin_providers_path, class: @selected_status.blank? ? "active" : "" %>
+      <% %w[submitted under_review changes_requested approved active suspended rejected].each do |status| %>
+        <%= link_to "#{status.humanize} (#{@provider_counts.fetch(status, 0)})", admin_providers_path(status: status), class: @selected_status == status ? "active" : "" %>
+      <% end %>
+    </nav>
+
+    <section class="admin-panel admin-table-panel">
+      <div class="admin-table" role="table">
+        <div class="admin-table-row admin-table-heading provider-table-heading" role="row"><span>Provider</span><span>Contact</span><span>Coverage</span><span>Services</span><span>Status</span><span></span></div>
+        <% @providers.each do |provider| %>
+          <%= link_to admin_provider_path(provider), class: "admin-table-row provider-table-row", role: "row" do %>
+            <span><strong><%= provider.profile&.display_name || provider.user.full_name %></strong><small><%= provider.profile&.country || provider.user.country || "—" %></small></span>
+            <span><%= provider.user.identifier || "—" %></span>
+            <span><%= provider.care_partner_services.map(&:coverage_label).compact_blank.to_sentence.presence || provider.profile&.broad_location || "—" %></span>
+            <span><%= provider.care_partner_services.map { |service| service.service_catalog.name }.to_sentence.presence || "—" %></span>
+            <span class="status-pill <%= provider.active? ? "success" : provider.under_review? ? "blue" : "" %>"><%= provider.application_status.humanize %></span>
+            <b>→</b>
+          <% end %>
+        <% end %>
+      </div>
+      <% if @providers.empty? %><p class="empty-state">No provider applications match this filter.</p><% end %>
+    </section>
+  </section>
+</main>

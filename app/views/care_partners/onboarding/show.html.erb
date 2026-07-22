@@ -1,0 +1,99 @@
+<% content_for :title, "Care Partner application · Goldenly" %>
+<main class="care-partner-workspace">
+  <%= render "care_partners/shared/sidebar" %>
+  <section class="care-partner-content onboarding-content">
+    <%= link_to "← Back to overview", care_partners_root_path, class: "back-link" %>
+    <header class="care-partner-page-heading"><p class="eyebrow">CARE PARTNER APPLICATION</p><h1>Build a profile members can trust.</h1><p>Your draft is saved as you go. Goldenly’s human review team makes every approval decision.</p></header>
+    <nav class="onboarding-steps" aria-label="Application progress">
+      <% [[1, "Your details"], [2, "Identity"], [3, "Services"], [4, "Review"]].each do |number, label| %>
+        <% classes = "#{@step == number ? 'active' : ''} #{@step > number ? 'complete' : ''}" %>
+        <% if number <= @unlocked_step %>
+          <%= link_to care_partners_onboarding_path(step: number), class: classes do %><b><%= number %></b><span><%= label %></span><% end %>
+        <% else %>
+          <span class="<%= classes %> locked" aria-disabled="true"><b><%= number %></b><span><%= label %></span></span>
+        <% end %>
+      <% end %>
+    </nav>
+    <section class="care-partner-form-card">
+      <%= render "shared/errors", record: @profile %>
+      <% if @step == 1 %>
+        <p class="eyebrow">STEP 1 OF 4</p><h2>Tell us about yourself</h2><p>We use these details for verification and safe service coordination.</p>
+        <%= form_with url: care_partners_onboarding_path(step: @step), method: :patch, class: "care-partner-form", html: { multipart: true } do %>
+          <div class="care-partner-form-grid two">
+            <div><%= label_tag "care_partner_profile_legal_name", "Legal name" %><%= text_field_tag "care_partner_profile[legal_name]", @profile.legal_name, required: true %></div>
+            <div><%= label_tag "care_partner_profile_display_name", "Display name" %><%= text_field_tag "care_partner_profile[display_name]", @profile.display_name, required: true %></div>
+            <div><%= label_tag "care_partner_profile_date_of_birth", "Date of birth" %><%= date_field_tag "care_partner_profile[date_of_birth]", @profile.date_of_birth, required: true %></div>
+            <div class="profile-photo-field"><%= label_tag "care_partner_profile_profile_photo", "Profile photo" %><%= file_field_tag "care_partner_profile[profile_photo]", accept: "image/jpeg,image/png,image/webp", required: !@profile.profile_photo.attached? %><small>JPG, PNG, or WebP · up to 5 MB</small><% if @profile.profile_photo.attached? && @profile.profile_photo.blob&.persisted? %><%= image_tag @profile.profile_photo, class: "profile-photo-preview", alt: "Current profile photo" %><% end %></div>
+            <%= render "care_partners/onboarding/address_fields", profile: @profile %>
+            <div><%= label_tag "care_partner_profile_languages_text", "Languages (comma separated)" %><%= text_field_tag "care_partner_profile[languages_text]", @profile.languages.join(", "), placeholder: "English, Telugu", required: true %></div>
+            <div><%= label_tag "care_partner_profile_emergency_contact_phone", "Emergency contact phone" %><%= telephone_field_tag "care_partner_profile[emergency_contact_phone]", @profile.emergency_contact_phone, required: true %></div>
+            <div class="full"><%= label_tag "care_partner_profile_emergency_contact_name", "Emergency contact name" %><%= text_field_tag "care_partner_profile[emergency_contact_name]", @profile.emergency_contact_name, required: true %></div>
+          </div>
+          <%= submit_tag "Save and continue", class: "primary-button" %>
+        <% end %>
+      <% elsif @step == 2 %>
+        <p class="eyebrow">STEP 2 OF 4</p><h2>Verify your identity</h2><p>Use a redacted reference where possible. Goldenly does not ask you to place raw sensitive identity numbers in notes.</p>
+        <div class="evidence-list">
+          <% @account.verification_documents.each do |document| %>
+            <article>
+              <div>
+                <strong><%= document.document_type %></strong>
+                <small><%= document.country_code %> · submitted as evidence · expires <%= document.expires_on&.to_fs(:long) || "not supplied" %></small>
+                <% if document.redacted_reference.present? %><small>Reference: <%= document.redacted_reference %></small><% end %>
+                <% if document.evidence_photos.attached? %>
+                  <div class="evidence-photo-list"><% document.evidence_photos.each do |photo| %><%= image_tag photo, class: "evidence-photo-thumbnail", alt: "Identity evidence" %><% end %></div>
+                <% end %>
+              </div>
+              <%= button_to "Remove", care_partners_document_path(document), method: :delete, class: "text-button" %>
+            </article>
+          <% end %>
+        </div>
+        <%= form_with model: @document, url: care_partners_documents_path, class: "care-partner-form compact-form", html: { multipart: true } do |form| %>
+          <div class="care-partner-form-grid two">
+            <div><%= form.label :document_type, "Document type" %><%= form.select :document_type, [["Government photo ID", "government_photo_id"], ["Passport", "passport"], ["Driving licence", "driving_licence"], ["India identity document", "india_identity_document"]], prompt: "Choose" %></div>
+            <div><%= form.label :country_code, "Country code" %><%= form.text_field :country_code, maxlength: 2, value: @profile.country_code %></div>
+            <div><%= form.label :redacted_reference, "Redacted reference" %><%= form.text_field :redacted_reference, placeholder: "Last four digits or reference" %></div>
+            <div><%= form.label :expires_on, "Expiry date (if any)" %><%= form.date_field :expires_on %></div>
+            <div class="full document-evidence-upload"><%= form.label :evidence_photos, "Identity document photos" %><%= form.file_field :evidence_photos, multiple: true, accept: "image/jpeg,image/png,image/webp", capture: "environment", required: true %><small>Take photos with your camera or select them from your device. Add one or two JPG, PNG, or WebP images, up to 5 MB each.</small></div>
+          </div>
+          <%= form.submit "Save identity document", class: "secondary-button" %>
+        <% end %>
+      <% elsif @step == 3 %>
+        <p class="eyebrow">STEP 3 OF 4</p><h2>Choose your services and scope</h2><p>Add one service to begin, then add any others you offer. Medical Health Checkup and Diagnostic Service require professional credentials for human review.</p>
+        <% services = @account.care_partner_services.includes(:service_catalog).to_a %>
+        <% credentials_by_catalog = @account.credentials.index_by(&:service_catalog_id) %>
+        <% available_service_catalogs = ServiceCatalog.available.reject { |service_catalog| services.any? { |service| service.service_catalog_id == service_catalog.id } } %>
+        <% services_limit_reached = services.size >= CarePartnerService::MAXIMUM_SERVICES_PER_PARTNER %>
+        <div class="service-enrollment-list">
+          <% services.each do |service| %>
+            <details class="service-enrollment-item">
+              <summary><div><strong><%= service.service_catalog.name %></strong><small><%= service.status.humanize %> · Coverage: <%= service.coverage_label.presence || "not supplied" %></small></div><span>View / edit</span></summary>
+              <div class="service-enrollment-expanded">
+                <p>Languages: <%= service.languages.presence&.to_sentence || "not supplied" %> · Available: <%= service.availability["days"].presence&.to_sentence || "Flexible" %><%= " · #{service.travel_radius_km} km radius" if service.travel_radius_km.present? %></p>
+                <%= render "care_partners/services/service_enrollment_form", care_partner_service: service, service_catalogs: ServiceCatalog.available, profile: @profile, credential: credentials_by_catalog[service.service_catalog_id], submit_label: "Save service", return_to_onboarding: true, editing: true, form_url: care_partners_service_path(service), form_method: :patch %>
+                <div class="service-card-actions"><%= button_to "Remove service", care_partners_service_path(service), method: :delete, class: "text-button" %></div>
+              </div>
+            </details>
+          <% end %>
+        </div>
+        <% if services.empty? %>
+          <section class="service-enrollment-card">
+            <p class="eyebrow">ADD YOUR FIRST SERVICE</p><h3>What service can you provide?</h3>
+            <%= render "care_partners/services/service_enrollment_form", care_partner_service: @care_partner_service, service_catalogs: available_service_catalogs, profile: @profile, submit_label: "Save service", return_to_onboarding: true %>
+          </section>
+        <% else %>
+          <% if services_limit_reached %>
+            <p class="service-limit-message">You have added the maximum of <strong><%= CarePartnerService::MAXIMUM_SERVICES_PER_PARTNER %> services</strong>.</p>
+          <% else %>
+            <details class="add-service-disclosure" id="add-service"><summary class="secondary-button">Add service (<%= services.size %>/<%= CarePartnerService::MAXIMUM_SERVICES_PER_PARTNER %>)</summary><section class="service-enrollment-card"><p class="eyebrow">ADD ANOTHER SERVICE</p><h3>What service can you provide?</h3><%= render "care_partners/services/service_enrollment_form", care_partner_service: @care_partner_service, service_catalogs: available_service_catalogs, profile: @profile, submit_label: "Save service", return_to_onboarding: true %></section></details>
+          <% end %>
+          <%= form_with url: care_partners_onboarding_path(step: @step), method: :patch, class: "care-partner-form compact-form" do %><div class="care-partner-form-grid"><%= label_tag "care_partner_profile_experience_summary", "Experience summary" %><%= text_area_tag "care_partner_profile[experience_summary]", @profile.experience_summary, rows: 4, placeholder: "Your service experience and training" %><%= label_tag "care_partner_profile_introduction_video_url", "30–90 second introduction video link" %><%= url_field_tag "care_partner_profile[introduction_video_url]", @profile.introduction_video_url, placeholder: "https://…", required: true %></div><%= submit_tag "Save services and continue", class: "primary-button" %><% end %>
+        <% end %>
+      <% else %>
+        <p class="eyebrow">STEP 4 OF 4</p><h2>Review and submit</h2><p>Once submitted, a Goldenly moderator reviews your evidence. AI may flag missing information, but never makes the decision.</p>
+        <div class="application-readiness"><strong>Before you submit</strong><% if @account.onboarding_missing_fields.any? %><ul><% @account.onboarding_missing_fields.each do |field| %><li><%= field.humanize %></li><% end %></ul><% else %><p>Everything required for review is present.</p><% end %></div>
+        <%= form_with url: submit_care_partners_onboarding_path, method: :post, class: "care-partner-form" do %><div class="care-partner-form-grid"><%= label_tag "care_partner_payout_method_summary", "Payout method summary" %><%= text_field_tag "care_partner[payout_method_summary]", @account.payout_method_summary, placeholder: "Verified bank account / payout method", required: true %><label class="declaration"><%= check_box_tag "declarations[terms]", "1", @account.terms_accepted_at.present?, required: true %> I accept the Care Partner terms (version 2026-07).</label><label class="declaration"><%= check_box_tag "declarations[privacy]", "1", @account.privacy_accepted_at.present?, required: true %> I consent to identity, location, and payout processing for service coordination.</label><label class="declaration"><%= check_box_tag "declarations[code_of_conduct]", "1", @account.code_of_conduct_accepted_at.present?, required: true %> I accept Goldenly’s code of conduct.</label><label class="declaration"><%= check_box_tag "declarations[service_standards]", "1", @account.service_standards_accepted_at.present?, required: true %> I accept the service standards and my permitted scope.</label></div><%= submit_tag "Submit for human review", class: "primary-button" %><% end %>
+      <% end %>
+    </section>
+  </section>
+</main>

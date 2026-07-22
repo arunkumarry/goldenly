@@ -1,0 +1,99 @@
+<% content_for :title, "Review Care Partner · Goldenly" %>
+
+<main class="care-partner-workspace">
+  <%= render "care_partners/shared/sidebar" %>
+
+  <section class="care-partner-content">
+    <%= link_to "← Review queue", moderation_care_partner_applications_path, class: "back-link" %>
+
+    <header class="care-partner-page-heading">
+      <p class="eyebrow">HUMAN REVIEW</p>
+      <h1><%= @account.profile&.display_name || @account.user.full_name %></h1>
+      <p><%= @account.profile&.country %> · application <%= @account.application_status.humanize %> · verification <%= @account.verification_status.humanize %>. Review original evidence before making a decision.</p>
+    </header>
+
+    <div class="moderation-grid">
+      <section class="care-partner-panel">
+        <p class="eyebrow">APPLICATION</p>
+        <h2>Submitted details</h2>
+
+        <dl class="review-details">
+          <div><dt>Legal name</dt><dd><%= @account.profile&.legal_name || "—" %></dd></div>
+          <div><dt>Email</dt><dd><%= @account.user.email_address || "—" %></dd></div>
+          <div><dt>Phone</dt><dd><%= @account.user.phone_number || "—" %></dd></div>
+          <div><dt>Languages</dt><dd><%= @account.profile&.languages&.to_sentence || "—" %></dd></div>
+          <div><dt>Experience</dt><dd><%= @account.profile&.experience_summary || "—" %></dd></div>
+          <div><dt>Introduction video</dt><dd><%= @account.profile&.introduction_video_url.present? ? link_to("Open secure link", @account.profile.introduction_video_url, target: "_blank", rel: "noreferrer") : "—" %></dd></div>
+        </dl>
+
+        <h3>Identity evidence</h3>
+        <% @account.verification_documents.each do |document| %>
+          <article class="review-evidence">
+            <div>
+              <strong><%= document.document_type %></strong>
+              <small><%= document.redacted_reference.presence || "No reference supplied" %> · expires <%= document.expires_on || "not supplied" %></small>
+            </div>
+            <div class="review-evidence-links">
+              <% document.evidence_photos.each_with_index do |photo, index| %>
+                <%= link_to "View photo #{index + 1}", url_for(photo), target: "_blank", rel: "noreferrer" %>
+              <% end %>
+              <%= link_to "View reference", document.file_reference, target: "_blank", rel: "noreferrer" if document.file_reference.present? %>
+            </div>
+          </article>
+        <% end %>
+
+        <h3>Credentials</h3>
+        <% @account.credentials.each do |credential| %>
+          <article class="review-evidence">
+            <div>
+              <strong><%= credential.credential_type %></strong>
+              <small><%= credential.service_catalog&.name || "General" %> · <%= credential.issuer %> · expires <%= credential.expires_on || "not supplied" %></small>
+            </div>
+            <%= link_to "View", credential.file_reference, target: "_blank", rel: "noreferrer" if credential.file_reference.present? %>
+          </article>
+        <% end %>
+
+        <h3>Selected services</h3>
+        <% @account.care_partner_services.each do |service| %>
+          <article class="review-evidence">
+            <div>
+              <strong><%= service.service_catalog.name %></strong>
+              <small><%= service.status.humanize %> · <%= service.service_catalog.clinical? ? "Clinical" : "Non-clinical" %></small>
+            </div>
+          </article>
+        <% end %>
+      </section>
+
+      <section class="care-partner-form-card">
+        <p class="eyebrow">RECORD DECISION</p>
+        <h2>Human decision</h2>
+        <p>Approval is a single Care Partner-level verification decision after review of the original evidence. It authorizes the Care Partner and their selected services; the system will not use AI to make this decision.</p>
+
+        <%= form_with url: moderation_care_partner_application_path(@account), method: :patch, scope: :moderator_review, class: "care-partner-form" do |form| %>
+          <div class="care-partner-form-grid">
+            <%= form.label :decision, "Decision" %>
+            <%= form.select :decision, [["Start review", "under_review"], ["Request changes", "changes_requested"], ["Approve Care Partner verification", "approved"], ["Reject", "rejected"], ["Suspend", "suspended"]], prompt: "Choose a human decision" %>
+            <%= form.label :reason, "Reason for applicant and audit trail" %>
+            <%= form.text_area :reason, rows: 5, required: true, placeholder: "Be clear about evidence reviewed, requested changes, or the decision basis." %>
+            <%= form.label :requested_sections, "Sections that need changes" %>
+            <%= form.select :requested_sections, [["Identity document", "identity"], ["Credential", "credential"], ["Introduction video", "video"], ["Service zones", "service_zones"], ["Payout method", "payout"]], {}, multiple: true %>
+          </div>
+
+          <%= form.submit "Save human review", class: "primary-button" %>
+        <% end %>
+      </section>
+    </div>
+
+    <section class="care-partner-panel review-history">
+      <p class="eyebrow">AUDIT HISTORY</p>
+      <h2>Previous review decisions</h2>
+      <% @reviews.each do |review| %>
+        <article>
+          <div><strong><%= review.decision.humanize %></strong><small><%= review.reviewer.full_name %> · <%= review.created_at.to_fs(:long) %></small></div>
+          <p><%= review.reason %></p>
+        </article>
+      <% end %>
+      <% if @reviews.empty? %><p class="empty-state">No decisions have been recorded.</p><% end %>
+    </section>
+  </section>
+</main>
