@@ -28,10 +28,9 @@
 threads_count = ENV.fetch("RAILS_MAX_THREADS", 3)
 threads threads_count, threads_count
 
-# Thruster is the public HTTP server in production. Cloud Run assigns PORT=80 to
-# Thruster, while Puma must remain on its internal upstream port. Keep the two
-# independent so Thruster can always proxy requests to Puma at port 3000.
-port ENV.fetch("RAILS_PORT", 3000)
+# Puma is the public HTTP server in Cloud Run, so it listens on the platform's
+# assigned PORT. It defaults to 3000 for local development.
+port ENV.fetch("PORT", 3000)
 
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart

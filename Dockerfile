@@ -72,8 +72,7 @@ COPY --chown=rails:rails --from=build /rails /rails
 # Entrypoint prepares the database.
 ENTRYPOINT ["/rails/bin/docker-entrypoint"]
 
-# Thruster is the public server on Cloud Run's PORT (80). Rails must use its
-# internal upstream port so Thruster can proxy to it rather than both processes
-# competing for Cloud Run's public port.
+# Cloud Run starts Puma directly. This keeps startup CPU assigned until Rails
+# is ready to accept traffic, rather than returning early from a proxy process.
 EXPOSE 80
-CMD ["./bin/thrust", "env", "PORT=3000", "./bin/rails", "server"]
+CMD ["./bin/rails", "server"]
