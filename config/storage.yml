@@ -10,6 +10,10 @@ google:
   service: GCS
   project: <%= ENV["GOOGLE_CLOUD_PROJECT"] %>
   bucket: <%= ENV["ACTIVE_STORAGE_GCS_BUCKET"] %>
+  # Cloud Run uses its attached service account rather than a downloaded JSON
+  # key. Ask IAM to sign the short-lived URLs Active Storage needs for private
+  # attachments, so profile photos and documents remain private.
+  iam: true
 
 # Use bin/rails credentials:edit to set the AWS secrets (as aws:access_key_id|secret_access_key)
 # amazon:
