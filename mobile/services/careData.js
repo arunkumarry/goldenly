@@ -1,7 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import { refreshSession } from "./auth";
-
-const apiUrl = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "");
+import { apiUrl, requireApiUrl } from "./api";
 
 async function send(path, options, careProfileId) {
   const accessToken = await SecureStore.getItemAsync("goldenly_access_token");
@@ -17,7 +16,7 @@ async function send(path, options, careProfileId) {
 }
 
 async function request(path, options, careProfileId) {
-  if (!apiUrl) throw new Error("Set EXPO_PUBLIC_API_URL to your Goldenly API URL.");
+  requireApiUrl();
   let response = await send(path, options, careProfileId);
   if (response.status === 401) {
     const refreshResult = await refreshSession();

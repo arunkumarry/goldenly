@@ -1,9 +1,8 @@
 import * as SecureStore from "expo-secure-store";
-
-const apiUrl = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "");
+import { apiUrl, requireApiUrl } from "./api";
 
 async function request(path, body) {
-  if (!apiUrl) throw new Error("Set EXPO_PUBLIC_API_URL to your Goldenly API URL before signing in.");
+  requireApiUrl("Set EXPO_PUBLIC_API_URL to your Goldenly API URL before signing in.");
   const response = await fetch(`${apiUrl}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

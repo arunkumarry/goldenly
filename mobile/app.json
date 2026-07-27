@@ -4,6 +4,9 @@
     "slug": "goldenly",
     "scheme": "goldenly",
     "icon": "./assets/goldenly-app-icon.png",
+    "extra": {
+      "apiUrl": "https://goldenly-web-949146314151.asia-south1.run.app"
+    },
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "plugins": [

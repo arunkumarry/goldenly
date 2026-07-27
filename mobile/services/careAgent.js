@@ -1,7 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import { refreshSession } from "./auth";
-
-const apiUrl = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "");
+import { apiUrl, requireApiUrl } from "./api";
 
 function sessionExpiredError() {
   const error = new Error("Your session has ended. Please sign in again.");
@@ -18,7 +17,7 @@ async function sendRequest(path, body, accessToken, careProfileId) {
 }
 
 async function request(path, body, careProfileId) {
-  if (!apiUrl) throw new Error("Set EXPO_PUBLIC_API_URL to your Goldenly API URL before using the care assistant.");
+  requireApiUrl("Set EXPO_PUBLIC_API_URL to your Goldenly API URL before using the care assistant.");
   let accessToken = await SecureStore.getItemAsync("goldenly_access_token");
   let response = await sendRequest(path, body, accessToken, careProfileId);
 
