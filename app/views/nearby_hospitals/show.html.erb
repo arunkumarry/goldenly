@@ -1,0 +1,43 @@
+<% content_for :title, "Nearby hospitals · Goldenly" %>
+
+<main class="dashboard"><%= render "shared/sidebar" %><section class="content"><div class="workflow-page hospital-finder-page">
+  <%= link_to "← Back to dashboard", dashboard_path, class: "back-link" %>
+  <section class="workflow-card hospital-finder-card">
+    <p class="eyebrow">NEARBY HOSPITALS</p>
+    <h1>Hospitals near <%= @care_profile.full_name %></h1>
+    <p class="active-profile-banner">Viewing hospital listings for <strong><%= @care_profile.full_name %></strong>. Goldenly shows nearby options, not medical recommendations.</p>
+
+    <%= form_with url: nearby_hospitals_path, method: :post, class: "workflow-form hospital-search-form", data: { turbo_frame: "hospital-search-results", turbo_stream: true, controller: "hospital-location" } do %>
+      <fieldset class="hospital-location-sources">
+        <legend>Choose a location for this search</legend>
+        <label class="hospital-source-option"><%= radio_button_tag :location_source, "saved_address", true, data: { action: "hospital-location#sourceChanged", hospital_location_target: "source" } %><span><strong>Saved care address</strong><small>Near <%= @care_profile.full_name %>'s saved address</small></span></label>
+        <label class="hospital-source-option"><%= radio_button_tag :location_source, "current_location", false, data: { action: "hospital-location#sourceChanged", hospital_location_target: "source" } %><span><strong>My current device location</strong><small>Use only for your own care profile after you allow it.</small></span></label>
+        <label class="hospital-source-option"><%= radio_button_tag :location_source, "manual_location", false, data: { action: "hospital-location#sourceChanged", hospital_location_target: "source" } %><span><strong>Another authorised address</strong><small>Select an address for this one search.</small></span></label>
+      </fieldset>
+
+      <div class="hospital-current-location" data-hospital-location-target="current" hidden>
+        <p>Goldenly will use your device location only for this search.</p>
+        <button type="button" class="secondary-button" data-action="hospital-location#useCurrentLocation">Use my current location</button>
+      </div>
+
+      <div class="hospital-manual-location" data-hospital-location-target="manual" hidden data-controller="address-autocomplete">
+        <%= label_tag "hospital_location_address", "Search by address, city, or postal code" %>
+        <%= text_field_tag "location[label]", nil, id: "hospital_location_address", placeholder: "Start typing an address", autocomplete: "off", data: { address_autocomplete_target: "input", action: "input->address-autocomplete#search", hospital_location_target: "label" } %>
+        <div data-address-autocomplete-target="results"></div>
+        <%= hidden_field_tag "location[latitude]", nil, data: { address_autocomplete_target: "latitude", hospital_location_target: "latitude" } %>
+        <%= hidden_field_tag "location[longitude]", nil, data: { address_autocomplete_target: "longitude", hospital_location_target: "longitude" } %>
+        <%= hidden_field_tag "location[city]", nil, data: { address_autocomplete_target: "city" } %>
+        <%= hidden_field_tag "location[country]", nil, data: { address_autocomplete_target: "country" } %>
+      </div>
+
+      <%= hidden_field_tag :radius_meters, HospitalSearch::Service::DEFAULT_RADIUS_METERS %>
+      <p class="hospital-location-error" data-hospital-location-target="error" role="alert"></p>
+      <%= submit_tag "Find nearby hospitals", class: "primary-button" %>
+    <% end %>
+
+    <p class="hospital-disclaimer">Goldenly shows nearby hospital listings. Confirm services and availability directly with the hospital. For immediate danger, call <%= @emergency_number %>.</p>
+    <%= link_to "SOS / Call emergency services", new_emergency_alert_path, class: "secondary-button hospital-sos-link" %>
+
+    <%= turbo_frame_tag "hospital-search-results" do %><%= render "results", results: nil, search_error: nil, care_profile: @care_profile %><% end %>
+  </section>
+</div></section></main>

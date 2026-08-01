@@ -1,0 +1,5 @@
+<%= turbo_stream.replace "hospital-search-results" do %>
+  <%= turbo_frame_tag "hospital-search-results" do %>
+    <%= render "results", results: @results, search_error: @search_error, care_profile: @care_profile %>
+  <% end %>
+<% end %>

@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Image, Keyboard, KeyboardAvoidingView, Linking, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as Speech from "expo-speech";
+import * as Location from "expo-location";
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from "expo-speech-recognition";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { clearTokens, getSession, requestCode, saveSession, setActiveCareProfile, signIn, signUp } from "../services/auth";
 import { askCareAgent, confirmCareAction } from "../services/careAgent";
 import { createServiceRequest, fetchDashboard, registerPushToken, unregisterPushToken } from "../services/careData";
 import { getPlace, searchPlaces } from "../services/places";
+import { recordHospitalAction, searchNearbyHospitals, updateLocationPreference } from "../services/hospitals";
 import { forceSpeakerOutput } from "../modules/goldenly-audio-session/src";
 import { cancelLocalCareNotifications, clearStoredPushToken, registerForRemoteNotifications, scheduleLocalCareNotifications, storedPushToken } from "../services/notifications";
 
@@ -49,7 +51,7 @@ function ModalSheet({ visible, title, children, onClose }) {
   </Modal>;
 }
 
-function AddressAutocomplete({ onSelected }) {
+function AddressAutocomplete({ onSelected, placeholder = "Home address" }) {
   const [address, setAddress] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [error, setError] = useState("");
@@ -74,7 +76,7 @@ function AddressAutocomplete({ onSelected }) {
     } catch (requestError) { setError(requestError.message); }
   };
 
-  return <View style={styles.addressPicker}><TextInput value={address} onChangeText={search} style={styles.authInput} placeholder="Home address" placeholderTextColor={colors.muted} autoComplete="street-address" />{suggestions.map((suggestion) => <TouchableOpacity key={suggestion.place_id} accessibilityRole="button" onPress={() => select(suggestion.place_id)} style={styles.addressSuggestion}><Text style={styles.addressSuggestionText}>{suggestion.text}</Text></TouchableOpacity>)}{suggestions.length ? <Text style={styles.googleAttribution}>Powered by Google</Text> : null}{error ? <Text style={styles.authError}>{error}</Text> : null}</View>;
+  return <View style={styles.addressPicker}><TextInput value={address} onChangeText={search} style={styles.authInput} placeholder={placeholder} placeholderTextColor={colors.muted} autoComplete="street-address" />{suggestions.map((suggestion) => <TouchableOpacity key={suggestion.place_id} accessibilityRole="button" onPress={() => select(suggestion.place_id)} style={styles.addressSuggestion}><Text style={styles.addressSuggestionText}>{suggestion.text}</Text></TouchableOpacity>)}{suggestions.length ? <Text style={styles.googleAttribution}>Powered by Google</Text> : null}{error ? <Text style={styles.authError}>{error}</Text> : null}</View>;
 }
 
 function AuthenticationScreen({ onAuthenticated }) {
@@ -153,6 +155,15 @@ export default function Home() {
   const [shareLocation, setShareLocation] = useState(false);
   const [sosProposal, setSosProposal] = useState(null);
   const [sosBusy, setSosBusy] = useState(false);
+  const [hospitalFinderOpen, setHospitalFinderOpen] = useState(false);
+  const [hospitalSource, setHospitalSource] = useState("saved_address");
+  const [hospitalManualPlace, setHospitalManualPlace] = useState(null);
+  const [hospitalResults, setHospitalResults] = useState(null);
+  const [hospitalBusy, setHospitalBusy] = useState(false);
+  const [hospitalError, setHospitalError] = useState("");
+  const [assistantHospitalSearch, setAssistantHospitalSearch] = useState(null);
+  const [assistantLocationChangeRequested, setAssistantLocationChangeRequested] = useState(false);
+  const [hospitalSearchLocation, setHospitalSearchLocation] = useState(null);
   const [careSection, setCareSection] = useState("Medicines");
   const assistantOpenRef = useRef(assistantOpen);
   const assistantProposalRef = useRef(assistantProposal);
@@ -333,6 +344,8 @@ export default function Home() {
     await clearTokens();
     setAssistantOpen(false);
     setAssistantProposal(null);
+    setAssistantHospitalSearch(null);
+    setAssistantLocationChangeRequested(false);
     setAssistantConversationToken(null);
     setUser(null);
     Alert.alert("Session ended", "Please sign in again to continue.");
@@ -406,6 +419,8 @@ export default function Home() {
     try {
       const result = await askCareAgent(prompt, activeCareProfile?.id, assistantConversationToken);
       setAssistantReply(result.reply); setAssistantProposal(result.proposal);
+      setAssistantHospitalSearch(result.hospital_search || null);
+      setAssistantLocationChangeRequested(Boolean(result.location_change_requested));
       setAssistantConversationToken(result.conversation_token || null);
       setAssistantMessages((messages) => [...messages, { id: nextChatMessageId("goldenly"), role: "assistant", text: result.reply }]);
       const spokenReply = result.proposal ? `${result.reply} ${result.proposal.confirmation}` : result.reply;
@@ -474,6 +489,55 @@ export default function Home() {
     }
     finally { setSosBusy(false); }
   };
+  const findNearbyHospitals = async () => {
+    if (!activeCareProfile?.id) return;
+    setHospitalBusy(true); setHospitalError("");
+    try {
+      let location;
+      if (hospitalSource === "current_location") {
+        const permission = await Location.requestForegroundPermissionsAsync();
+        if (permission.status !== "granted") throw new Error("Location permission was not granted. Choose the saved address or another address instead.");
+        const currentLocation = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        location = { latitude: currentLocation.coords.latitude, longitude: currentLocation.coords.longitude, label: "My current device location" };
+      }
+      if (hospitalSource === "manual_location") {
+        if (!hospitalManualPlace?.latitude || !hospitalManualPlace?.longitude) throw new Error("Choose an address suggestion before searching.");
+        location = { latitude: hospitalManualPlace.latitude, longitude: hospitalManualPlace.longitude, label: hospitalManualPlace.address || hospitalManualPlace.city || "Selected address" };
+      }
+      const result = await searchNearbyHospitals(activeCareProfile.id, { location_source: hospitalSource, ...(location ? { location } : {}), radius_meters: 10000, language_code: assistantLanguage === "Telugu" ? "te" : "en" });
+      setHospitalSearchLocation(location || null);
+      setHospitalResults(result);
+    } catch (error) {
+      if (error.code === "SESSION_EXPIRED") return handleExpiredSession();
+      setHospitalError(error.message);
+    } finally { setHospitalBusy(false); }
+  };
+  const expandHospitalSearch = async () => {
+    if (!activeCareProfile?.id || !hospitalResults) return;
+    setHospitalBusy(true); setHospitalError("");
+    try {
+      const result = await searchNearbyHospitals(activeCareProfile.id, { location_source: hospitalResults.search_context.location_source, ...(hospitalSearchLocation ? { location: hospitalSearchLocation } : {}), radius_meters: 20000, language_code: assistantLanguage === "Telugu" ? "te" : "en" });
+      setHospitalResults(result);
+    } catch (error) { setHospitalError(error.message); } finally { setHospitalBusy(false); }
+  };
+  const useHospitalAction = async (hospital, actionType) => {
+    try { await recordHospitalAction(hospitalResults.search_event_id, { google_place_id: hospital.place_id, action_type: actionType }, activeCareProfile?.id); } catch (_error) { /* An audit failure must not prevent an intentional dialer/maps action. */ }
+    const destination = actionType === "call" ? `tel:${hospital.phone_number.replace(/[^+\d]/g, "")}` : hospital.maps_url;
+    if (destination) Linking.openURL(destination);
+  };
+  const makePreferredHospital = async (hospital) => {
+    try {
+      await updateLocationPreference(activeCareProfile?.id, { preferred_hospital_place_id: hospital.place_id });
+      setHospitalResults((current) => current ? { ...current, hospitals: current.hospitals.map((item) => ({ ...item, preferred: item.place_id === hospital.place_id })) } : current);
+    } catch (error) {
+      Alert.alert("Preferred hospital", error.message);
+    }
+  };
+  const openHospitalFinder = (source = "saved_address", results = null) => {
+    setHospitalSource(source); setHospitalManualPlace(null); setHospitalError("");
+    setHospitalSearchLocation(null);
+    setHospitalResults(results); setHospitalFinderOpen(true);
+  };
   const callPhone = (phone) => Linking.openURL(`tel:${phone.replace(/[^+\d]/g, "")}`);
   const emailProvider = (email) => Linking.openURL(`mailto:${email}`);
 
@@ -492,7 +556,7 @@ export default function Home() {
   const renderHelp = () => <>
     <Text style={styles.pageTitle}>Get help</Text><Text style={styles.date}>Choose what you need. You will confirm before we send a request.</Text>
     {requestSaved && <View style={styles.confirmation}><Text style={styles.confirmationTitle}>Request confirmed</Text><Text style={styles.detail}>Provider matching is the next phase.</Text></View>}
-    <View style={styles.cards}>{serviceCatalogs.map((service) => <TouchableOpacity key={service.id} accessibilityRole="button" onPress={() => { setRequestSaved(false); setServiceDateTime(new Date(Date.now() + 60 * 60 * 1000)); setServiceNotes(""); setSelectedHelp(service); }} style={styles.helpCard}><Text style={styles.helpIcon}>{serviceIcons[service.kind] || "✦"}</Text><View style={styles.flex}><Text style={styles.cardTitle}>{service.name}</Text><Text style={styles.detail}>{service.description}</Text></View><Text style={styles.chevron}>›</Text></TouchableOpacity>)}</View>
+    <View style={styles.cards}><TouchableOpacity accessibilityRole="button" accessibilityLabel="Find nearby hospitals" onPress={() => openHospitalFinder()} style={styles.helpCard}><Text style={styles.helpIcon}>✚</Text><View style={styles.flex}><Text style={styles.cardTitle}>Nearby hospitals</Text><Text style={styles.detail}>Find factual hospital listings near an authorised location.</Text></View><Text style={styles.chevron}>›</Text></TouchableOpacity>{serviceCatalogs.map((service) => <TouchableOpacity key={service.id} accessibilityRole="button" onPress={() => { setRequestSaved(false); setServiceDateTime(new Date(Date.now() + 60 * 60 * 1000)); setServiceNotes(""); setSelectedHelp(service); }} style={styles.helpCard}><Text style={styles.helpIcon}>{serviceIcons[service.kind] || "✦"}</Text><View style={styles.flex}><Text style={styles.cardTitle}>{service.name}</Text><Text style={styles.detail}>{service.description}</Text></View><Text style={styles.chevron}>›</Text></TouchableOpacity>)}</View>
     {!careDataBusy && serviceCatalogs.length === 0 ? <Text style={styles.detail}>Services are loading. Please try again shortly.</Text> : null}
   </>;
 
@@ -536,6 +600,7 @@ export default function Home() {
     <TouchableOpacity accessibilityRole="button" accessibilityLabel="Talk to Goldenly" onPress={openAssistant} style={styles.agentFloater}><Text style={styles.agentFloaterIcon}>🎙</Text><Text style={styles.agentFloaterText}>Talk to Goldenly</Text></TouchableOpacity>
     <View style={styles.nav}>{[["Today", "⌂"], ["Help", "✦"], ["SOS", "✚"], ["My Care", "♡"], ["My Circle", "♧"]].map(([name, icon]) => <TouchableOpacity key={name} accessibilityRole="button" accessibilityLabel={name} onPress={() => name === "SOS" ? setSosOpen(true) : setTab(name)} style={styles.navItem}><Text style={[styles.navIcon, name === "SOS" && styles.sosIcon]}>{icon}</Text><Text style={[styles.navText, tab === name && styles.activeText, name === "SOS" && styles.sosText]}>{name}</Text></TouchableOpacity>)}</View>
     <ModalSheet visible={Boolean(selectedHelp)} title={selectedHelp?.name || "Request help"} onClose={() => { setServicePickerMode(null); setSelectedHelp(null); }}><Text style={styles.sheetText}>{selectedHelp?.description}</Text><Text style={styles.cardTitle}>Preferred date and time</Text><View style={styles.dateTimeRow}><ActionButton secondary onPress={() => setServicePickerMode("date")}>{serviceDateTime.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</ActionButton><ActionButton secondary onPress={() => setServicePickerMode("time")}>{serviceDateTime.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</ActionButton></View>{servicePickerMode ? <DateTimePicker value={serviceDateTime} mode={servicePickerMode} display="default" onChange={(_event, selected) => { setServicePickerMode(null); if (selected) setServiceDateTime((current) => mergePickerValue(current, selected, servicePickerMode)); }} /> : null}<Text style={styles.cardTitle}>Extra details (optional)</Text><TextInput value={serviceNotes} onChangeText={setServiceNotes} style={styles.input} multiline placeholder="Access needs, preferred provider, or other details" placeholderTextColor={colors.muted} /><Text style={styles.safeNote}>Goldenly will not book or dispatch anyone until you confirm.</Text><ActionButton onPress={confirmHelp}>Confirm request</ActionButton><ActionButton secondary onPress={() => setSelectedHelp(null)}>Not now</ActionButton></ModalSheet>
+    <ModalSheet visible={hospitalFinderOpen} title="Nearby hospitals" onClose={() => setHospitalFinderOpen(false)}><ScrollView style={styles.hospitalModalScroll} contentContainerStyle={styles.hospitalModalContent} keyboardShouldPersistTaps="handled"><Text style={styles.sheetText}>Goldenly shows nearby hospital listings, not medical recommendations. Confirm services and availability directly with the hospital.</Text><Text style={styles.cardTitle}>Search near</Text><View style={styles.hospitalSourceRow}>{[["saved_address", "Saved address"], ["current_location", "My location"], ["manual_location", "Another address"]].map(([source, label]) => <TouchableOpacity key={source} accessibilityRole="button" onPress={() => { setHospitalSource(source); setHospitalError(""); setHospitalResults(null); }} style={[styles.hospitalSourceButton, hospitalSource === source && styles.hospitalSourceButtonActive]}><Text style={[styles.hospitalSourceText, hospitalSource === source && styles.hospitalSourceTextActive]}>{label}</Text></TouchableOpacity>)}</View>{hospitalSource === "current_location" ? <Text style={styles.safeNote}>Goldenly will ask for location permission only when you search. Current location is available only for your own care profile.</Text> : null}{hospitalSource === "manual_location" ? <AddressAutocomplete placeholder="Search by address, city, or postal code" onSelected={setHospitalManualPlace} /> : null}{hospitalManualPlace && hospitalSource === "manual_location" ? <Text style={styles.detail}>Selected: {hospitalManualPlace.address}</Text> : null}{hospitalError ? <View style={styles.hospitalError}><Text style={styles.hospitalErrorText}>{hospitalError}</Text></View> : null}<ActionButton onPress={findNearbyHospitals}>{hospitalBusy ? "Finding hospitals…" : "Find nearby hospitals"}</ActionButton>{hospitalBusy ? <ActivityIndicator color={colors.blue} /> : null}{hospitalResults ? <View style={styles.hospitalResults}><Text style={styles.cardTitle}>{hospitalResults.search_context?.location_label || "Nearby hospital listings"}</Text><Text style={styles.detail}>{hospitalResults.hospitals?.length || 0} nearby option(s). Distances are approximate.</Text><Text style={styles.googleAttribution}>Powered by Google</Text>{hospitalResults.hospitals?.map((hospital) => <View key={hospital.place_id} style={styles.hospitalCard}><View style={styles.hospitalCardHeading}><View style={styles.flex}><View style={styles.hospitalNameRow}><Text style={styles.cardTitle}>{hospital.name}</Text>{hospital.preferred ? <Text style={styles.preferredPill}>Preferred</Text> : null}</View><Text style={styles.detail}>{hospital.address}</Text></View></View><Text style={styles.hospitalMeta}>{hospital.distance_meters ? `Approx. ${Math.round(hospital.distance_meters)} m` : "Distance unavailable"} · {hospital.open_status}</Text><View style={styles.hospitalActions}>{hospital.call_available ? <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Call ${hospital.name}`} onPress={() => useHospitalAction(hospital, "call")} style={styles.hospitalAction}><Text style={styles.hospitalActionText}>Call</Text></TouchableOpacity> : <View style={[styles.hospitalAction, styles.hospitalActionDisabled]} accessibilityLabel="Phone number unavailable; use Directions or view in Maps"><Text style={styles.hospitalActionDisabledText}>Phone unavailable</Text></View>}{hospital.directions_available ? <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Open directions to ${hospital.name}`} onPress={() => useHospitalAction(hospital, "directions")} style={[styles.hospitalAction, styles.hospitalDirectionsAction]}><Text style={[styles.hospitalActionText, styles.hospitalDirectionsText]}>Directions</Text></TouchableOpacity> : null}</View>{!hospital.preferred ? <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Make ${hospital.name} the preferred hospital`} onPress={() => makePreferredHospital(hospital)} style={styles.preferredButton}><Text style={styles.preferredButtonText}>Make preferred hospital</Text></TouchableOpacity> : null}</View>)}{!hospitalResults.hospitals?.length && hospitalResults.can_expand_search ? <><Text style={styles.safeNote}>No useful listings were found within 10 km. You can choose to broaden this search to 20 km.</Text><ActionButton secondary onPress={expandHospitalSearch}>Search within 20 km</ActionButton></> : null}</View> : null}<Text style={styles.safeNote}>Not an emergency service. For immediate danger, use SOS or call local emergency services.</Text></ScrollView></ModalSheet>
     <Modal visible={assistantOpen} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => { Keyboard.dismiss(); setAssistantConversationToken(null); setAssistantOpen(false); }}>
       <SafeAreaView style={styles.chatScreen}><StatusBar style="dark" />
         <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
@@ -552,6 +617,8 @@ export default function Home() {
             {assistantMessages.map((item) => <View key={item.id} style={[styles.chatBubble, item.role === "member" ? styles.memberBubble : styles.goldenlyBubble]}><Text style={[styles.chatBubbleLabel, item.role === "member" && styles.memberBubbleLabel]}>{item.role === "member" ? "YOU" : "GOLDENLY"}</Text><Text style={[styles.chatBubbleText, item.role === "member" && styles.memberBubbleText]}>{item.text}</Text></View>)}
             {assistantBusy ? <View style={[styles.chatBubble, styles.goldenlyBubble]}><Text style={styles.chatBubbleLabel}>GOLDENLY</Text><Text style={styles.chatTyping}>Thinking…</Text></View> : null}
             {assistantProposal ? <View style={styles.confirmation}><Text style={styles.confirmationTitle}>{assistantProposal.title}</Text><Text style={styles.detail}>{assistantProposal.confirmation}</Text><ActionButton onPress={confirmAssistantProposal}>{assistantBusy ? "Confirming…" : "Confirm action"}</ActionButton></View> : null}
+            {assistantHospitalSearch ? <View style={styles.hospitalAssistantCard}><Text style={styles.confirmationTitle}>Nearby hospital listings are ready</Text><Text style={styles.detail}>Review factual options and choose Call or Directions yourself.</Text><ActionButton onPress={() => { setAssistantOpen(false); openHospitalFinder("saved_address", assistantHospitalSearch); }}>View nearby hospitals</ActionButton></View> : null}
+            {assistantLocationChangeRequested ? <View style={styles.hospitalAssistantCard}><Text style={styles.confirmationTitle}>Choose a search location</Text><Text style={styles.detail}>You can use your saved address, current device location, or another authorised address.</Text><ActionButton secondary onPress={() => { setAssistantOpen(false); openHospitalFinder("manual_location"); }}>Choose location</ActionButton></View> : null}
           </ScrollView>
           <View style={styles.voiceStatus}><View style={styles.voiceStatusDot} /><View style={styles.flex}><Text style={styles.voiceStatusTitle}>{speaking ? "Goldenly is speaking" : listening ? "Listening…" : "Voice conversation ready"}</Text><Text style={styles.voiceStatusCopy}>{speaking ? "I will listen when I finish." : listening ? "Speak naturally. I am listening." : "Tap the microphone to talk."}</Text></View></View>
           <View style={styles.chatComposer}>
@@ -568,7 +635,7 @@ export default function Home() {
       </SafeAreaView>
     </Modal>
     <ModalSheet visible={profilePickerOpen} title="Choose care profile" onClose={() => setProfilePickerOpen(false)}>{careProfiles.map((profile) => <ActionButton key={profile.id} secondary={profile.id !== activeCareProfile?.id} onPress={async () => { const updatedUser = await setActiveCareProfile(profile.id); setUser(updatedUser); setProfilePickerOpen(false); setAssistantReply(""); setAssistantProposal(null); setAssistantConversationToken(null); }}>{profile.id === activeCareProfile?.id ? `${profile.full_name} · selected` : profile.full_name}</ActionButton>)}{careProfiles.length === 0 ? <Text style={styles.detail}>Your care profile will appear here after you sign in again.</Text> : null}</ModalSheet>
-    <ModalSheet visible={sosOpen} title="Emergency SOS" onClose={() => { setSosOpen(false); setSosProposal(null); }}><Text style={styles.sheetText}>After confirmation, Goldenly records an alert for your trusted circle. Use the call button for immediate emergency help.</Text><View style={styles.locationRow}><View style={styles.flex}><Text style={styles.cardTitle}>Share my saved location</Text><Text style={styles.detail}>Only if you consent</Text></View><Switch value={shareLocation} onValueChange={setShareLocation} trackColor={{ false: colors.line, true: colors.sky }} /></View><Text style={styles.safeNote}>For immediate danger, call local emergency services first.</Text>{sosProposal ? <><View style={styles.confirmation}><Text style={styles.confirmationTitle}>{sosProposal.title}</Text><Text style={styles.detail}>{sosProposal.confirmation}</Text></View><ActionButton onPress={confirmSos}>{sosBusy ? "Confirming…" : "Confirm emergency alert"}</ActionButton><ActionButton secondary onPress={() => Linking.openURL(`tel:${sosProposal.emergency_number}`)}>Call {sosProposal.emergency_number} now</ActionButton></> : <ActionButton onPress={prepareSos}>{sosBusy ? "Preparing…" : "Continue to confirmation"}</ActionButton>}<ActionButton secondary onPress={() => setSosOpen(false)}>Cancel</ActionButton></ModalSheet>
+    <ModalSheet visible={sosOpen} title="Emergency SOS" onClose={() => { setSosOpen(false); setSosProposal(null); }}><Text style={styles.sheetText}>After confirmation, Goldenly records an alert for your trusted circle. Use the call button for immediate emergency help.</Text><View style={styles.locationRow}><View style={styles.flex}><Text style={styles.cardTitle}>Share my saved location</Text><Text style={styles.detail}>Only if you consent</Text></View><Switch value={shareLocation} onValueChange={setShareLocation} trackColor={{ false: colors.line, true: colors.sky }} /></View><Text style={styles.safeNote}>For immediate danger, call local emergency services first.</Text>{sosProposal ? <><View style={styles.confirmation}><Text style={styles.confirmationTitle}>{sosProposal.title}</Text><Text style={styles.detail}>{sosProposal.confirmation}</Text></View><ActionButton onPress={confirmSos}>{sosBusy ? "Confirming…" : "Confirm emergency alert"}</ActionButton><ActionButton secondary onPress={() => Linking.openURL(`tel:${sosProposal.emergency_number}`)}>Call {sosProposal.emergency_number} now</ActionButton><ActionButton secondary onPress={() => { setSosOpen(false); openHospitalFinder(); }}>Find nearby hospitals</ActionButton></> : <ActionButton onPress={prepareSos}>{sosBusy ? "Preparing…" : "Continue to confirmation"}</ActionButton>}<ActionButton secondary onPress={() => setSosOpen(false)}>Cancel</ActionButton></ModalSheet>
   </SafeAreaView>;
 }
 
@@ -590,6 +657,31 @@ styles.providerLabel = { color: colors.blue, fontSize: 9, fontWeight: "900", let
 styles.providerActions = { gap: 6, alignItems: "flex-end" };
 styles.providerAction = { minWidth: 54, alignItems: "center", paddingHorizontal: 9, paddingVertical: 7, borderRadius: 8, backgroundColor: colors.blue };
 styles.providerActionText = { color: "white", fontSize: 10, fontWeight: "800" };
+styles.hospitalModalScroll = { maxHeight: "72%" };
+styles.hospitalModalContent = { gap: 12, paddingBottom: 6 };
+styles.hospitalSourceRow = { flexDirection: "row", flexWrap: "wrap", gap: 7 };
+styles.hospitalSourceButton = { minHeight: 42, justifyContent: "center", paddingHorizontal: 10, borderRadius: 11, backgroundColor: "#edf2f3" };
+styles.hospitalSourceButtonActive = { backgroundColor: colors.blue };
+styles.hospitalSourceText = { color: colors.muted, fontSize: 11, fontWeight: "800" };
+styles.hospitalSourceTextActive = { color: "white" };
+styles.hospitalError = { padding: 11, borderRadius: 10, backgroundColor: "#fff1f0" };
+styles.hospitalErrorText = { color: colors.red, fontSize: 12, fontWeight: "700", lineHeight: 17 };
+styles.hospitalResults = { gap: 10, paddingTop: 3 };
+styles.hospitalCard = { padding: 14, borderRadius: 14, borderWidth: 1, borderColor: colors.line, backgroundColor: "white", gap: 8 };
+styles.hospitalCardHeading = { flexDirection: "row", alignItems: "flex-start", gap: 8 };
+styles.hospitalNameRow = { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6 };
+styles.hospitalMeta = { color: colors.blue, fontSize: 11, fontWeight: "800", lineHeight: 16 };
+styles.preferredPill = { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 9, backgroundColor: "#e5f5ed", color: colors.success, fontSize: 9, fontWeight: "900" };
+styles.hospitalActions = { flexDirection: "row", gap: 8 };
+styles.hospitalAction = { flex: 1, minHeight: 48, alignItems: "center", justifyContent: "center", paddingHorizontal: 9, borderRadius: 10, backgroundColor: colors.blue };
+styles.hospitalDirectionsAction = { backgroundColor: "#e9f3f7" };
+styles.hospitalActionText = { color: "white", fontSize: 12, fontWeight: "800" };
+styles.hospitalDirectionsText = { color: colors.blue };
+styles.hospitalActionDisabled = { backgroundColor: "#edf2f3" };
+styles.hospitalActionDisabledText = { color: colors.muted, fontSize: 10, fontWeight: "700", textAlign: "center" };
+styles.preferredButton = { alignSelf: "flex-start", minHeight: 40, justifyContent: "center", paddingHorizontal: 10, borderRadius: 9, backgroundColor: "#e5f5ed" };
+styles.preferredButtonText = { color: colors.success, fontSize: 11, fontWeight: "800" };
+styles.hospitalAssistantCard = { padding: 14, borderRadius: 13, backgroundColor: "#e9f5f7", gap: 7 };
 
 // Voice-first assistant conversation styles.
 styles.chatScreen = { flex: 1, backgroundColor: "#f5f8f7" };

@@ -18,6 +18,7 @@ class ApplicationController < ActionController::Base
       [ "Calendar", calendar_path, "▦" ],
       [ "Care plan", new_reminder_path, "▣" ],
       [ "Services", new_service_request_path, "✦" ],
+      [ "Nearby hospitals", nearby_hospitals_path, "✚" ],
       [ "Care profile", edit_care_profile_path(current_care_profile), "▤" ],
       [ "Add a person", new_care_profile_path, "＋" ],
       [ "Trusted circle", trusted_circle_path, "♧" ],

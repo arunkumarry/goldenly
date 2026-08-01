@@ -19,7 +19,16 @@ Rails.application.routes.draw do
   get "services", to: "dashboard#services", as: :services
   get "places/autocomplete", to: "places#autocomplete", as: :places_autocomplete
   get "places/:place_id", to: "places#show", as: :place
+  get "nearby-hospitals", to: "nearby_hospitals#show", as: :nearby_hospitals
+  post "nearby-hospitals", to: "nearby_hospitals#create"
+  resources :hospital_searches, only: [] do
+    resources :hospital_place_actions, only: :create, path: "actions"
+  end
   resources :care_profiles, only: %i[new create edit update]
+  resources :care_profiles, only: [] do
+    resource :location_preference, only: %i[show update], controller: "care_profile_location_preferences"
+  end
+  resource :emergency_alert, only: %i[new create]
   resources :reminders, only: %i[new create update]
   resources :service_requests, only: %i[new create update] do
     resource :completion, only: %i[show update], controller: "service_request_completions"
@@ -88,6 +97,13 @@ Rails.application.routes.draw do
       post "auth/refresh", to: "authentication#refresh"
       resource :push_token, only: %i[create destroy]
       resources :care_profiles, only: %i[index create]
+      post "care_profiles/:care_profile_id/nearby_hospitals", to: "care_profile_hospitals#create"
+      resources :care_profiles, only: [] do
+        resource :location_preference, only: %i[show update], controller: "care_profile_location_preferences"
+      end
+      resources :hospital_searches, only: [] do
+        resources :actions, only: :create, controller: "hospital_search_actions"
+      end
       post "care-agent/messages", to: "care_agent#message"
       post "care-agent/actions/confirm", to: "care_agent#confirm"
       resource :dashboard, only: :show

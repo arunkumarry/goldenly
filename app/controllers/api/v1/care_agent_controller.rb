@@ -23,12 +23,16 @@ class Api::V1::CareAgentController < ActionController::API
       }
     end
 
+    assistant_response = GoldenlyAssistant.new(message, care_profile: care_profile, history: conversation["history"], actor: current_mobile_user).reply
+    action ||= assistant_response.action_proposal
     proposal = action&.merge("confirmation_token" => CareActionConfirmation.issue(care_profile: care_profile, action: action))
-    reply = GoldenlyAssistant.new(message, care_profile: care_profile, history: conversation["history"]).reply
+    reply = assistant_response.reply
 
     render json: {
       reply: reply,
       proposal: proposal,
+      hospital_search: assistant_response.hospital_search,
+      location_change_requested: assistant_response.location_change_requested,
       conversation_token: proposal ? nil : next_conversation_token(care_profile, nil, conversation, message, reply),
       safety_note: safety_note
     }

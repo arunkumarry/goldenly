@@ -5,6 +5,7 @@ class GooglePlaces
   class RequestError < StandardError; end
 
   AUTOCOMPLETE_URL = URI("https://places.googleapis.com/v1/places:autocomplete")
+  NEARBY_SEARCH_URL = URI("https://places.googleapis.com/v1/places:searchNearby")
   DETAILS_BASE_URL = "https://places.googleapis.com/v1/places/".freeze
 
   def self.autocomplete(input:, session_token:)
@@ -13,6 +14,10 @@ class GooglePlaces
 
   def self.place(place_id:, session_token:)
     new.place(place_id:, session_token:)
+  end
+
+  def self.nearby_hospitals(latitude:, longitude:, radius_meters:, language_code: "en")
+    new.nearby_hospitals(latitude:, longitude:, radius_meters:, language_code:)
   end
 
   def autocomplete(input:, session_token:)
@@ -50,6 +55,32 @@ class GooglePlaces
       latitude: payload.dig("location", "latitude"),
       longitude: payload.dig("location", "longitude")
     }
+  end
+
+  # Google Places content is intentionally returned only for the active request.
+  # Callers must not persist these fields as a local hospital directory.
+  def nearby_hospitals(latitude:, longitude:, radius_meters:, language_code: "en")
+    payload = request_json(
+      NEARBY_SEARCH_URL,
+      Net::HTTP::Post,
+      headers: {
+        "X-Goog-FieldMask" => "places.id,places.displayName,places.location,places.formattedAddress,places.internationalPhoneNumber,places.googleMapsUri,places.currentOpeningHours.openNow,places.businessStatus,places.types"
+      },
+      body: {
+        includedTypes: [ "hospital" ],
+        maxResultCount: 10,
+        rankPreference: "DISTANCE",
+        languageCode: language_code,
+        locationRestriction: {
+          circle: {
+            center: { latitude: latitude.to_f, longitude: longitude.to_f },
+            radius: radius_meters.to_f
+          }
+        }
+      }
+    )
+
+    payload.fetch("places", [])
   end
 
   private
