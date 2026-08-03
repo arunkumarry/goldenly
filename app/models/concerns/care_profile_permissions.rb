@@ -10,6 +10,7 @@ module CareProfilePermissions
     trusted_circle
     emergency_alerts
     sos_location
+    location_access
   ].freeze
   LEVELS = %w[none view manage emergency_only].freeze
 

@@ -14,6 +14,8 @@ class CareProfile < ApplicationRecord
   has_many :service_requests, dependent: :destroy
   has_many :trusted_contacts, dependent: :destroy
   has_many :emergency_alerts, dependent: :destroy
+  has_many :hospital_search_events, dependent: :destroy
+  has_one :location_preference, class_name: "CareProfileLocationPreference", dependent: :destroy
 
   enum :state, { draft: "draft", unclaimed: "unclaimed", claimed: "claimed", assisted: "assisted", archived: "archived" }, default: :unclaimed
 

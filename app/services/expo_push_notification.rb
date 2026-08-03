@@ -5,7 +5,7 @@ class ExpoPushNotification
 
   def self.deliver(tokens:, title:, body:, data: {})
     expo_tokens = tokens.select { |token| token.token.start_with?("ExponentPushToken[", "ExpoPushToken[") }
-    return if expo_tokens.empty?
+    return { status: "skipped", reason: "No Expo push tokens." } if expo_tokens.empty?
 
     request = Net::HTTP::Post.new(ENDPOINT, "Content-Type" => "application/json", "Accept" => "application/json")
     request.body = expo_tokens.map do |token|
@@ -15,10 +15,12 @@ class ExpoPushNotification
     response = Net::HTTP.start(ENDPOINT.host, ENDPOINT.port, use_ssl: true, open_timeout: 5, read_timeout: 10) do |http|
       http.request(request)
     end
-    return if response.is_a?(Net::HTTPSuccess)
+    return { status: "delivered" } if response.is_a?(Net::HTTPSuccess)
 
     Rails.logger.warn("Expo push notification failed with HTTP #{response.code}")
+    { status: "failed", reason: "Expo returned HTTP #{response.code}." }
   rescue StandardError => error
     Rails.logger.warn("Expo push notification could not be delivered: #{error.class}: #{error.message}")
+    { status: "failed", reason: "Expo push could not be delivered." }
   end
 end

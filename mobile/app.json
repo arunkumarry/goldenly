@@ -12,6 +12,12 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Goldenly to use your location once to find nearby hospitals."
+        }
+      ],
       "./plugins/without-ios-push-notifications",
       [
         "expo-speech-recognition",

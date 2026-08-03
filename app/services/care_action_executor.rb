@@ -42,12 +42,19 @@ class CareActionExecutor
     alert = @care_profile.emergency_alerts.create!(
       status: "confirmed", message: @action["message"], share_location: @share_location,
       location: @care_profile.location, country: @care_profile.country, emergency_number: number,
-      trusted_contact_count: @care_profile.trusted_contacts.count, confirmed_at: Time.current
+      trusted_contact_count: trusted_contact_count, confirmed_at: Time.current
     )
     AuditTrail.record!(action: "sos.confirmed", actor: @actor, care_profile: @care_profile, metadata: { emergency_alert_id: alert.id, location_shared: @share_location })
+    SosAlertDeliveryJob.perform_later(alert.id, @actor&.id)
     {
       message: "Emergency alert recorded for #{alert.trusted_contact_count} trusted contact(s). Call #{number} for immediate emergency help.",
       record_type: "emergency_alert", record_id: alert.id, emergency_call_url: "tel:#{number}"
     }
+  end
+
+  def trusted_contact_count
+    linked = @care_profile.care_profile_links.active.count { |link| link.allows?(:emergency_alerts, :view, emergency: true) && link.user_id != @actor&.id }
+    legacy = @care_profile.trusted_contacts.count { |contact| contact.phone_number.present? || contact.email.present? }
+    linked + legacy
   end
 end

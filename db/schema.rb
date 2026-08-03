@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_23_093000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_28_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -184,6 +184,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_093000) do
     t.index ["user_id"], name: "index_care_profile_links_on_user_id"
   end
 
+  create_table "care_profile_location_preferences", force: :cascade do |t|
+    t.bigint "care_profile_id", null: false
+    t.datetime "created_at", null: false
+    t.string "location_sharing_preference", default: "ask_each_time", null: false
+    t.string "preferred_hospital_place_id"
+    t.datetime "preferred_hospital_selected_at"
+    t.datetime "updated_at", null: false
+    t.index ["care_profile_id"], name: "index_care_profile_location_preferences_on_care_profile_id", unique: true
+  end
+
   create_table "care_profiles", force: :cascade do |t|
     t.jsonb "accessibility_preferences", default: {}, null: false
     t.string "address"
@@ -284,6 +294,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_093000) do
     t.integer "trusted_contact_count", default: 0, null: false
     t.datetime "updated_at", null: false
     t.index ["care_profile_id"], name: "index_emergency_alerts_on_care_profile_id"
+  end
+
+  create_table "hospital_place_actions", force: :cascade do |t|
+    t.string "action_type", null: false
+    t.datetime "created_at", null: false
+    t.string "google_place_id", null: false
+    t.bigint "hospital_search_event_id", null: false
+    t.datetime "initiated_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["hospital_search_event_id"], name: "index_hospital_place_actions_on_hospital_search_event_id"
+  end
+
+  create_table "hospital_search_events", force: :cascade do |t|
+    t.bigint "actor_user_id"
+    t.bigint "care_profile_id", null: false
+    t.string "consent_basis", null: false
+    t.string "country", null: false
+    t.datetime "created_at", null: false
+    t.string "location_source", null: false
+    t.integer "result_count", default: 0, null: false
+    t.datetime "searched_at", null: false
+    t.string "status", null: false
+    t.datetime "updated_at", null: false
+    t.index ["actor_user_id"], name: "index_hospital_search_events_on_actor_user_id"
+    t.index ["care_profile_id", "searched_at"], name: "idx_on_care_profile_id_searched_at_d1619af381"
+    t.index ["care_profile_id"], name: "index_hospital_search_events_on_care_profile_id"
   end
 
   create_table "moderator_reviews", force: :cascade do |t|
@@ -404,6 +440,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_093000) do
     t.index ["service_catalog_id"], name: "index_service_requests_on_service_catalog_id"
   end
 
+  create_table "sos_alert_deliveries", force: :cascade do |t|
+    t.string "channel", null: false
+    t.string "consent_basis", null: false
+    t.datetime "created_at", null: false
+    t.datetime "delivered_at"
+    t.bigint "emergency_alert_id", null: false
+    t.boolean "location_shared", default: false, null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.string "recipient_label", null: false
+    t.bigint "recipient_user_id"
+    t.string "status", null: false
+    t.datetime "updated_at", null: false
+    t.index ["emergency_alert_id"], name: "index_sos_alert_deliveries_on_emergency_alert_id"
+    t.index ["recipient_user_id"], name: "index_sos_alert_deliveries_on_recipient_user_id"
+  end
+
   create_table "trusted_contacts", force: :cascade do |t|
     t.string "access_level", default: "Updates", null: false
     t.bigint "care_profile_id", null: false
@@ -468,6 +520,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_093000) do
   add_foreign_key "care_partners", "users"
   add_foreign_key "care_profile_links", "care_profiles"
   add_foreign_key "care_profile_links", "users"
+  add_foreign_key "care_profile_location_preferences", "care_profiles"
   add_foreign_key "care_profiles", "users", column: "owner_user_id"
   add_foreign_key "consent_records", "care_profiles"
   add_foreign_key "consent_records", "users", column: "actor_user_id"
@@ -475,6 +528,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_093000) do
   add_foreign_key "earnings_ledger_entries", "care_partners"
   add_foreign_key "earnings_ledger_entries", "service_assignments"
   add_foreign_key "emergency_alerts", "care_profiles"
+  add_foreign_key "hospital_place_actions", "hospital_search_events"
+  add_foreign_key "hospital_search_events", "care_profiles"
+  add_foreign_key "hospital_search_events", "users", column: "actor_user_id"
   add_foreign_key "moderator_reviews", "care_partners"
   add_foreign_key "moderator_reviews", "users", column: "reviewer_id"
   add_foreign_key "profile_invitations", "care_profiles"
@@ -486,6 +542,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_093000) do
   add_foreign_key "service_offers", "service_requests"
   add_foreign_key "service_requests", "care_profiles"
   add_foreign_key "service_requests", "service_catalogs"
+  add_foreign_key "sos_alert_deliveries", "emergency_alerts"
+  add_foreign_key "sos_alert_deliveries", "users", column: "recipient_user_id"
   add_foreign_key "trusted_contacts", "care_profiles"
   add_foreign_key "visit_submissions", "service_assignments"
 end

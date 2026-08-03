@@ -2,6 +2,7 @@
 # Database mutations, contact notifications, and service dispatch remain behind
 # explicit confirmation flows in their respective controllers/jobs.
 class GoldenlyAssistant
+  Response = Data.define(:reply, :hospital_search, :location_change_requested, :action_proposal)
   SAFETY_INSTRUCTIONS = <<~PROMPT.freeze
     You are Goldenly, a warm, concise care-profile coordination assistant.
     Reply in the language used by the person whenever possible.
@@ -12,31 +13,51 @@ class GoldenlyAssistant
     Do not claim that a reminder, booking, notification, or data share occurred. State that confirmation is required.
   PROMPT
 
-  def initialize(message, care_profile: nil, history: [])
+  def initialize(message, care_profile: nil, history: [], actor: nil)
     @message = message.to_s.strip
     @care_profile = care_profile
     @history = Array(history)
+    @actor = actor
   end
 
   def reply
-    return fallback if ENV["OPENAI_API_KEY"].blank? || ENV["OPENAI_MODEL"].blank?
+    return fallback_response if ENV["OPENAI_API_KEY"].blank?
 
     # RubyLLM's bundled model catalogue can lag behind OpenAI model releases.
     # The configured model is deliberately routed through OpenAI, with its
     # capabilities validated by OpenAI at request time.
+    context = CareAgentToolContext.new(care_profile: @care_profile, actor: @actor)
     chat = RubyLLM.chat(
-      model: ENV.fetch("OPENAI_MODEL"),
+      model: ENV.fetch("OPENAI_MODEL", "gpt-5.6"),
       provider: :openai,
       assume_model_exists: true
-    ).with_instructions([ SAFETY_INSTRUCTIONS, care_profile_context ].compact.join("\n\n"))
+    ).with_instructions([ SAFETY_INSTRUCTIONS, tool_instructions, care_profile_context ].compact.join("\n\n"))
     @history.each { |turn| chat.add_message(role: turn.fetch("role").to_sym, content: turn.fetch("content")) }
-    chat.ask(@message).content
+    response = chat.with_tools(*tools_for(context)).ask(@message)
+    Response.new(response.content, context.hospital_search, context.location_change_requested, context.action_proposal)
   rescue StandardError => error
     Rails.logger.warn("GoldenlyAssistant RubyLLM fallback: #{error.message}")
-    fallback
+    fallback_response
   end
 
   private
+
+  def tools_for(context)
+    [
+      FindHospitalsTool.new(context:), ChangeSearchLocationTool.new(context:), CallHospitalTool.new(context:),
+      OpenDirectionsTool.new(context:), StartSosTool.new(context:), NotifyTrustedContactsTool.new(context:)
+    ]
+  end
+
+  def tool_instructions
+    <<~PROMPT
+      You have Goldenly coordination tools. Use find_hospitals for requests for nearby hospitals only.
+      Use saved_address for a saved-profile-address search. If the person asks to use their current location or another address, call change_search_location and tell them to choose it in the app.
+      Never make medical claims about a hospital. Say Goldenly shows factual nearby listings and they must confirm services and availability directly.
+      Call hospital, directions, SOS, and trusted-contact notifications always require a clear confirmation in the app. Never claim they happened until confirmed.
+      For explicit emergency help, use start_sos. Never infer an emergency from vague symptoms.
+    PROMPT
+  end
 
   def care_profile_context
     return unless @care_profile
@@ -56,6 +77,17 @@ class GoldenlyAssistant
     CONTEXT
   end
 
+  def fallback_response
+    context = CareAgentToolContext.new(care_profile: @care_profile, actor: @actor)
+    if hospital_request?
+      result = FindHospitalsTool.new(context:).execute(location_source: "saved_address")
+      reply = result[:status] == "ok" ? "Here are nearby hospital listings near #{@care_profile.full_name}'s saved address. Please confirm services and availability directly with the hospital. Would you like to call one or open directions?" : result[:message]
+      return Response.new(reply, context.hospital_search, context.location_change_requested, context.action_proposal)
+    end
+
+    Response.new(fallback, nil, false, nil)
+  end
+
   def fallback
     return medication_answer if medication_question?
     return service_schedule_answer if service_schedule_question?
@@ -73,6 +105,10 @@ class GoldenlyAssistant
     else
       "I understood your request. I’ll prepare it for your confirmation before creating a reminder, booking a service, or sharing it."
     end
+  end
+
+  def hospital_request?
+    @message.match?(/\b(hospital|nearby hospital|emergency room|clinic near)\b|హాస్పిటల్|ఆసుపత్రి/i)
   end
 
   def medication_question?

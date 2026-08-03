@@ -1,0 +1,24 @@
+<% if search_error.present? %>
+  <section class="hospital-result-message hospital-result-error" role="alert"><strong>Nearby hospitals could not be loaded.</strong><p><%= search_error %></p><p>Try another address, or call local emergency services if this is an emergency.</p></section>
+<% elsif results.present? %>
+  <section class="hospital-results" aria-live="polite">
+    <div class="hospital-results-heading"><div><p class="eyebrow">HOSPITAL LISTINGS</p><h2><%= results.dig(:search_context, :location_label) %></h2><p><%= results.dig(:hospitals)&.count || 0 %> nearby option(s) within <%= results.dig(:search_context, :radius_meters).to_i / 1000 %> km</p><small class="google-attribution">Powered by Google</small></div></div>
+    <% if results.fetch(:hospitals).any? %>
+      <div class="hospital-results-list">
+        <% results.fetch(:hospitals).each do |hospital| %>
+          <article class="hospital-result-card">
+            <div class="hospital-result-top"><div><div class="hospital-name-row"><h3><%= hospital.fetch(:name) %></h3><% if hospital[:preferred] %><span class="preferred-hospital-pill">Preferred hospital</span><% end %></div><p><%= hospital[:address] %></p></div><div class="hospital-facts"><span><%= hospital[:distance_meters] ? "Approx. #{number_with_delimiter(hospital[:distance_meters])} m" : "Distance unavailable" %></span><span><%= hospital[:open_status] %></span></div></div>
+            <p class="hospital-card-disclaimer"><%= hospital[:disclaimer] %></p>
+            <div class="hospital-result-actions">
+              <% if hospital[:call_available] %><%= link_to "Call", "tel:#{hospital[:phone_number].to_s.gsub(/[^+\d]/, '')}", class: "primary-button hospital-action", data: { controller: "hospital-action", action: "click->hospital-action#follow", hospital_action_url_value: hospital_search_hospital_place_actions_path(results.fetch(:search_event_id)), hospital_action_type_value: "call", hospital_action_place_id_value: hospital[:place_id], turbo: false }, aria: { label: "Call #{hospital[:name]}" } %><% else %><span class="secondary-button disabled-button" aria-label="Phone number unavailable; use Directions or view in Maps">Phone unavailable</span><% end %>
+              <% if hospital[:directions_available] %><%= link_to "Directions", hospital[:maps_url], class: "secondary-button hospital-action", target: "_blank", rel: "noopener", data: { controller: "hospital-action", action: "click->hospital-action#follow", hospital_action_url_value: hospital_search_hospital_place_actions_path(results.fetch(:search_event_id)), hospital_action_type_value: "directions", hospital_action_place_id_value: hospital[:place_id], turbo: false }, aria: { label: "Open directions to #{hospital[:name]}" } %><% end %>
+              <% if current_care_profile_link&.allows?(:location_access, :manage) && !hospital[:preferred] %><%= button_to "Make preferred", care_profile_location_preference_path(care_profile), method: :patch, params: { care_profile_location_preference: { preferred_hospital_place_id: hospital[:place_id] } }, class: "text-button" %><% end %>
+            </div>
+          </article>
+        <% end %>
+      </div>
+    <% else %>
+      <section class="hospital-result-message"><strong>No nearby hospital listings were found.</strong><p>Try another authorised address. You can widen the search to 20 km only if you choose to do so.</p><%= button_to "Search within 20 km", nearby_hospitals_path, method: :post, params: { continuation_token: results[:continuation_token], radius_meters: HospitalSearch::Service::MAX_RADIUS_METERS }, form: { data: { turbo_frame: "hospital-search-results", turbo_stream: true } }, class: "secondary-button" if results[:can_expand_search] %></section>
+    <% end %>
+  </section>
+<% end %>
