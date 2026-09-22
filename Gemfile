@@ -19,7 +19,7 @@ gem "jbuilder"
 gem "bcrypt", "~> 3.1"
 gem "jwt", "~> 2.10"
 gem "twilio-ruby", "~> 7.8"
-gem "ruby_llm", "~> 1.16"
+gem "ruby_llm", "~> 2.0"
 
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 # gem "bcrypt", "~> 3.1.7"
